@@ -54,7 +54,7 @@ class ArmController:
         self.space_mouse_command = np.array([0,0,0,0,0,0]).T
 
         if self.is_sim == False:
-            self.robot_ip = rospy.get_param('~robot_ip', '192.168.1.233 ')
+            self.robot_ip = rospy.get_param('~robot_ip', '192.168.1.199 ')
             self.arm = XArmAPI(self.robot_ip)
             self.arm.motion_enable(enable=True)
             self.arm.set_mode(0)

@@ -1,6 +1,6 @@
 <launch>
     <!-- Declare parameters with default values -->
-    <arg name="robot_ip" default="192.168.1.233" />
+    <arg name="robot_ip" default="192.168.1.199" />
     <arg name="using_spacemouse" default="true" />
     <arg name="report_type" default="normal" />
     <arg name="add_gripper" default="false" />

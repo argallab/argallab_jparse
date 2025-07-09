@@ -18,7 +18,7 @@ def euler_to_quaternion(roll, pitch, yaw):
 class Spacemouse2Xarm:
     def __init__(self):
         rospy.init_node('spacemouse2xarm')
-        ip = rospy.get_param('~robot_ip', '192.168.1.233')
+        ip = rospy.get_param('~robot_ip', '192.168.1.199')
         
         self.arm = XArmAPI(ip)
         self.arm.motion_enable(enable=True)
