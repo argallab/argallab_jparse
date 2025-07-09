@@ -42,6 +42,28 @@ docker run --privileged -p 6080:80 --shm-size=512m -v <path to jparse repo>:/hom
 
 ```
 
+### Instructions for Argallab
+We will need to build the docker image ourself (but I guess sincewe now have it done once, need to remind myself to upload to argallab docker hub).
+Below are the instructions for building the image ourself and the docker container:
+```sh
+cd <naviagte to your git clone of this>/Docker
+docker build -t jparse .
+
+sudo docker run -it --privileged \
+-v /dev:/dev \
+-v /home/demiana/workspaces/jparse_ws/src:/home/jparse_ws/src \
+-e DISPLAY \
+-e QT_X11_NO_MITSHM=1 \
+--name argallab_jparse \
+--net=host \
+jparse:latest
+```
+
+This will start create the container as well. For future, to start the container:
+```
+sudo docker start -i argallab_jparse
+```
+
 ### Note
 
 We are working on a Python package that you can easily import into your project. We envision the below:
