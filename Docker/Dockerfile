@@ -2,6 +2,8 @@
 
 FROM tiryoh/ros-desktop-vnc:noetic
 
+ENV ROS_DISTRO noetic
+
 RUN set -x \
 	&& apt-get update \
 	&& apt-get install -y ros-noetic-moveit \
@@ -28,9 +30,9 @@ RUN rosdep update \
 RUN apt-get update && apt-get install -y ros-noetic-ros-control ros-noetic-ros-controllers
 
 
-RUN /bin/bash -c 'conan config set general.revisions_enabled=1'
-RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; mkdir -p /ros_kortex_ws/src; cd ros_kortex_ws/src; git clone https://github.com/Kinovarobotics/ros_kortex; git clone https://github.com/Kinovarobotics/ros_kortex_vision; git clone https://github.com/ros-simulation/gazebo_ros_pkgs; cd ..; catkin_make'
-RUN echo "source /ros_kortex_ws/devel/setup.bash" >> ~/.bashrc
+# RUN /bin/bash -c 'conan config set general.revisions_enabled=1'
+# RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; mkdir -p /ros_kortex_ws/src; cd ros_kortex_ws/src; git clone https://github.com/Kinovarobotics/ros_kortex; git clone https://github.com/Kinovarobotics/ros_kortex_vision; git clone https://github.com/ros-simulation/gazebo_ros_pkgs; cd ..; catkin_make'
+# RUN echo "source /ros_kortex_ws/devel/setup.bash" >> ~/.bashrc
 
 
 # Install ros real sense
@@ -41,22 +43,22 @@ RUN apt-get install -y ros-noetic-gazebo-ros-pkgs ros-noetic-gazebo-ros-control
 # install xarm code
 RUN cd / && mkdir -p dev_ws/src && cd dev_ws/src
 
-RUN source /opt/ros/noetic/setup.bash && cd /ros_kortex_ws/src && git clone https://github.com/xArm-Developer/xarm_ros.git --recursive \
+RUN source /opt/ros/noetic/setup.bash && git clone https://github.com/xArm-Developer/xarm_ros.git --recursive \
 	&& git clone -b noetic-devel https://github.com/armlabstanford/hrl-kdl.git \
 	&& git clone https://github.com/catkin/catkin_simple.git \
-    && cd xarm_ros && git pull && git submodule sync && git submodule update --init --remote \
-    && cd /ros_kortex_ws/src && rosdep update && rosdep install --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
+    && cd xarm_ros && git pull && git submodule sync && git submodule update --init --remote
 
-RUN source /opt/ros/noetic/setup.bash && cd /ros_kortex_ws && rm -rf build/ devel/ && catkin build && source devel/setup.bash
+
+RUN source /opt/ros/noetic/setup.bash
 # install franka panda gazebo
 # deps
 RUN apt install -y ros-$ROS_DISTRO-gazebo-ros-control ros-${ROS_DISTRO}-rospy-message-converter ros-${ROS_DISTRO}-effort-controllers ros-${ROS_DISTRO}-joint-state-controller ros-${ROS_DISTRO}-moveit ros-${ROS_DISTRO}-moveit-commander ros-${ROS_DISTRO}-moveit-visual-tools
-RUN apt install -y ros-${ROS_DISTRO}-libfranka
+# RUN apt install -y ros-${ROS_DISTRO}-libfranka
 
-RUN cd / && mkdir -p panda_ws/src && cd panda_ws/src
-RUN source /opt/ros/noetic/setup.bash && cd /panda_ws/src && git clone -b noetic-devel https://github.com/justagist/panda_simulator
+# RUN cd / && mkdir -p panda_ws/src && cd panda_ws/src
+# RUN source /opt/ros/noetic/setup.bash && cd /panda_ws/src && git clone -b noetic-devel https://github.com/justagist/panda_simulator
 
-RUN cd /panda_ws/src/panda_simulator && ./build_ws.sh
+# RUN cd /panda_ws/src/panda_simulator && ./build_ws.sh
 RUN pip install "numpy<1.24" && pip install numpy-quaternion==2020.5.11.13.33.35 && pip install numba
 
 RUN git clone https://github.com/xArm-Developer/xArm-Python-SDK.git && cd xArm-Python-SDK && python3 setup.py install
@@ -68,8 +70,10 @@ RUN apt install -y texlive texlive-latex-extra texlive-fonts-recommended dvipng
 
 RUN apt install ros-noetic-apriltag-ros -y
 
+RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> ~/.bashrc
 COPY ./entrypoint.sh /
-ENTRYPOINT [ "/bin/bash", "-c", "/entrypoint.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
+CMD ["bash"]
 
 ENV USER ubuntu
 ENV PASSWD ubuntu
