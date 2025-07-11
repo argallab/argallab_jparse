@@ -54,6 +54,7 @@ class ArmController:
         self.space_mouse_command = np.array([0,0,0,0,0,0]).T
 
         if self.is_sim == False:
+            # from IPython import embed; embed(banner1="hello in not sim")
             self.robot_ip = rospy.get_param('~robot_ip', '192.168.1.199 ')
             self.arm = XArmAPI(self.robot_ip)
             self.arm.motion_enable(enable=True)
@@ -76,6 +77,7 @@ class ArmController:
 
         self.joint_states = None
         self.target_pose = None
+        self.space_mouse_command = None  # added this 7/11/25
         self.jacobian_calculator = jparse_cls.JParseClass(base_link=self.base_link, end_link=self.end_link)
 
         #get tf listener
@@ -360,7 +362,7 @@ class ArmController:
 
         while not rospy.is_shutdown():
 
-            if self.joint_states and self.target_pose:
+            if self.joint_states is not None and self.space_mouse_command is not None:  # edited this 7/11/25
                 t = rospy.Time.now()
                 # obtain the current joints
                 q = []
@@ -556,6 +558,9 @@ class ArmController:
             rospy.loginfo("Joint velocities: %s", joint_vel_list)
             if self.use_space_mouse_jparse:
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
+            # elif self.use_keyboard_jparse:
+            #     rospy.loginfo("hello using the keyboard jparse!")
+            #     # self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)  # commenting out for now to test
 
 
 if __name__ == '__main__':
