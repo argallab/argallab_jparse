@@ -22,8 +22,8 @@ class Spacemouse2Xarm:
         
         self.arm = XArmAPI(ip)
         self.arm.motion_enable(enable=True)
-        self.arm.set_mode(1)
-        self.arm.set_state(0)
+        self.arm.set_mode(1)  # mode 1: servoj mode (can do cartesian or joint control), mode 0: position control mode, mode 2: joint teaching mode, mode 3: does notexist lol, mode 4: joint velocity control mode, mode 5: cartesian velocity control mode, mode 6: joint online trajectory planning mode, mode 7: cartesian online trajectory planning mode 
+        self.arm.set_state(0) # start 0: start motion, state 1: in motion, state 2: standby, state 3: paused state, state 4: stop state, state 5: system reset, state 6: stop
         self.device = SpaceMouse(pos_sensitivity=1.0, rot_sensitivity=1.0)
         self.device.start_control()
         self.locked = False
@@ -41,14 +41,14 @@ class Spacemouse2Xarm:
         # reset 
         self.is_resetting = True
         self.arm.motion_enable(enable=True)
-        self.arm.set_mode(0)
-        self.arm.set_state(0)
+        self.arm.set_mode(0) # mode 0: position control mode
+        self.arm.set_state(0) # start 0: start motion
         self.arm.set_position(x=331, y=20.3, z=308, roll=173, pitch=0, yaw=0,
                                 speed=100, is_radian=False, wait=True)
         self.arm.motion_enable(enable=True)
         
-        self.arm.set_mode(5)
-        self.arm.set_state(0)
+        self.arm.set_mode(5) # mode 5: cartesian velocity control mode
+        self.arm.set_state(0) # start 0: start motion
         self.is_resetting = False
         
         
