@@ -64,6 +64,11 @@ This will start create the container as well. For future, to start the container
 sudo docker start -i argallab_jparse
 ```
 
+If display is having issues, then in the local machine (outside docker) enter the following command:
+```
+xhost +local:docker 
+```
+
 ### Note
 
 We are working on a Python package that you can easily import into your project. We envision the below:
@@ -137,8 +142,8 @@ roslaunch manipulator_control xarm_main_vel.launch is_sim:=false method:=JParse
 ```
 Recommended methods for physical system (to avoid unsafe motion) is: "JParse", "JacobianDampedLeastSquares"
 
-
-### Kinova Gen 3 Velocity Control Example
+<!-- For kinova arm! -->
+<!-- ### Kinova Gen 3 Velocity Control Example
 Run the Kinova environment
 ```bash
 roslaunch manipulator_control kinova_gen3.launch
@@ -159,7 +164,7 @@ roslaunch manipulator_control full_pose_trajectory.launch robot:=kinova key_poin
 Run the Method: 
 ```bash
 roslaunch manipulator_control kinova_vel_control.launch is_sim:=true show_jparse_ellipses:=true phi_gain_position:=2.0 phi_gain_angular:=2.0  jparse_gamma:=0.2 method:=JParse 
-```
+``` -->
 
 ## Running JParse with the SpaceMouse controller
 
