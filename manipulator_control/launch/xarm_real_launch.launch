@@ -3,7 +3,8 @@
     <arg name="robot_ip" default="192.168.1.199" />
     <arg name="using_spacemouse" default="true" />
     <arg name="report_type" default="normal" />
-    <arg name="add_gripper" default="false" />
+    <arg name="add_gripper" default="true" />
+    <arg name="show_rviz" default="false" />  <!-- setting to false becuase this launches its own rviz; do not need 2 (7/14/25)-->
 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find manipulator_control)/rviz/jparse_final.rviz" />
 
@@ -13,5 +14,6 @@
         <arg name="velocity_control" value="$(arg using_spacemouse)" />
         <arg name="report_type" value="$(arg report_type)" />
         <arg name="add_gripper" value="$(arg add_gripper)" />
+        <arg name="show_rviz" value="$(arg show_rviz)" />
     </include>
 </launch>
