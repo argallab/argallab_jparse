@@ -18,6 +18,21 @@ _In Submission_
 [![Project](https://img.shields.io/badge/Project_Page-J_PARSE-blue)](https://jparse-manip.github.io)
 [![ArXiv](https://img.shields.io/badge/Arxiv-J_PARSE-red)](https://arxiv.org/abs/2505.00306) 
 
+
+## FOR ARGALLAB
+Instructions to teleop robot with jparse and keyboard:
+
+Launch the following (velocity_control param for the xarm7_gripper_moveit_config launchfile is left as false in this case):
+```
+roslaunch xarm7_gripper_moveit_config realMove_exec.launch robot_ip:=<add the robot ip> add_gripper:=true
+
+roslaunch manipulator_control xarm_main_vel.launch use_space_mouse:=true use_space_mouse_jparse:=true
+
+rosrun teleop_twist_keyboard teleop_twist_keyboard.py _stamped:=True _frame_id:=link_eef cmd_vel:=robot_action
+```
+
+Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
+
 ## Quick Start with Docker
 
 To build the Docker image for the our environment, we use VNC docker, which allows for a graphical user interface displayable in the browser.
