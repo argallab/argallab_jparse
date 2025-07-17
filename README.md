@@ -33,6 +33,12 @@ rosrun teleop_twist_keyboard teleop_twist_keyboard.py _stamped:=True _frame_id:=
 
 Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
 
+## FOR ARGALLAB TO DOS (not in order of to do):
+- [ ] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
+- [ ] self-avoidance collision
+- [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled
+- [ ] port to ros2 (need pinnochio)
+
 ## Quick Start with Docker
 
 To build the Docker image for the our environment, we use VNC docker, which allows for a graphical user interface displayable in the browser.
