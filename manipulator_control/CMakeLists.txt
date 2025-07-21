@@ -29,7 +29,7 @@ install(TARGETS
 # install python modules
 ament_python_install_package(${PROJECT_NAME})
 
-# install python executables
+# install python executables 
 install(PROGRAMS
   scripts/python_node.py
   DESTINATION lib/${PROJECT_NAME}
