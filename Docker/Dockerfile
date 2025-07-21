@@ -1,79 +1,99 @@
-# Official Dockerfile for J-PARSE 
+FROM ros:jazzy
+ENV ROS_DISTRO jazzy
 
-FROM tiryoh/ros-desktop-vnc:noetic
+# install ros packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-ros2-control \
+    ros-${ROS_DISTRO}-ros2-controllers \
+    ros-${ROS_DISTRO}-kinematics-interface-kdl \
+    ros-${ROS_DISTRO}-ament-cmake-clang-format \
+    ros-${ROS_DISTRO}-rviz2 \
+    ros-${ROS_DISTRO}-moveit \
+    ros-${ROS_DISTRO}-moveit-ros-perception \
+    ros-${ROS_DISTRO}-ackermann-msgs \
+    ros-${ROS_DISTRO}-control-toolbox \
+    ros-${ROS_DISTRO}-generate-parameter-library \
+    ros-${ROS_DISTRO}-generate-parameter-library-py \
+    ros-${ROS_DISTRO}-moveit-ros-control-interface \
+    ros-${ROS_DISTRO}-pick-ik \
+    ros-${ROS_DISTRO}-robot-state-publisher \
+    ros-${ROS_DISTRO}-joint-state-publisher-gui \
+    ros-${ROS_DISTRO}-pinocchio \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV ROS_DISTRO noetic
+# install packages
+RUN apt-get update && apt-get install -q -y --no-install-recommends \
+    dirmngr \
+    gnupg2 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN set -x \
-	&& apt-get update \
-	&& apt-get install -y ros-noetic-moveit \
-	&& apt-get install -y ros-noetic-moveit-servo \
-	&& apt-get install -y ros-noetic-moveit-visual-tools \
-	&& apt-get install -y ros-noetic-moveit-ros-visualization \
-	&& apt-get install -y ros-noetic-graph-msgs \
-	&& apt-get install -y ros-noetic-rosparam-shortcuts \
-	&& apt-get install -y ros-noetic-control-toolbox \
-	&& apt-get install -y gstreamer1.0-tools gstreamer1.0-libav libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-base \
-	&& rm -rf /var/lib/apt/lists/* 
+# install ubuntu packages
+RUN apt-get update -yq && apt-get install -yq \
+    python3 \
+    apt-utils \
+    locales \
+    curl \
+    gnupg \
+    lsb-release \
+    libx11-dev \
+    libxau-dev \
+    libxcb1-dev \
+    libxdmcp-dev \
+    libxext-dev \
+    lsb-release \
+    pkg-config \
+    byobu \
+    nano \
+    python3-pip \
+    ssh \
+    vim \
+    gdb \
+    udev \
+    python3-pyudev \
+    ipython3 \
+    mesa-utils \
+    autoconf \
+    automake \
+    libtool \
+    make \
+    g++ \
+    unzip \
+    git \
+    python3-scipy \
+    python3-numpy \ 
+    python3-cvxopt \
+    python3-pandas \ 
+    python3-colcon-common-extensions \
+    python-is-python3 \
+	python3-tk \
+	python3-pytest-rerunfailures \
+	python3-matplotlib \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# RUN git clone https://github.com/xArm-Developer/xArm-Python-SDK.git && cd xArm-Python-SDK && python3 setup.py install
 
-RUN set -x \
-    && pip3 install conan==1.59 \
-    && conan config set general.revisions_enabled=1 \
-    && conan profile new default --detect > /dev/null \
-    && conan profile update settings.compiler.libcxx=libstdc++11 default
+# # install pinocchio
+# RUN pip3 install pin
 
+# setup environment
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
-RUN rosdep update \
-        && echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+ENV QT_X11_NO_MITSHM=1
 
-RUN apt-get update && apt-get install -y ros-noetic-ros-control ros-noetic-ros-controllers
+# add udev rules
+RUN mkdir -p /etc/udev/rules.d
+COPY ./udev_rules/* /etc/udev/rules.d/
 
+# create a generic workplace directory
+RUN mkdir -p /home/workspace/src
+WORKDIR /home/workspace
 
-# RUN /bin/bash -c 'conan config set general.revisions_enabled=1'
-# RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; mkdir -p /ros_kortex_ws/src; cd ros_kortex_ws/src; git clone https://github.com/Kinovarobotics/ros_kortex; git clone https://github.com/Kinovarobotics/ros_kortex_vision; git clone https://github.com/ros-simulation/gazebo_ros_pkgs; cd ..; catkin_make'
-# RUN echo "source /ros_kortex_ws/devel/setup.bash" >> ~/.bashrc
-
-
-# Install ros real sense
-RUN apt-get update && apt-get install -y ros-noetic-realsense2-camera && apt-get install -y ros-noetic-cv-bridge && apt install -y ros-noetic-sensor-msgs
-
-RUN apt-get install -y ros-noetic-gazebo-ros-pkgs ros-noetic-gazebo-ros-control
-
-# install xarm code
-RUN cd / && mkdir -p dev_ws/src && cd dev_ws/src
-
-RUN source /opt/ros/noetic/setup.bash && git clone https://github.com/xArm-Developer/xarm_ros.git --recursive \
-	&& git clone -b noetic-devel https://github.com/armlabstanford/hrl-kdl.git \
-	&& git clone https://github.com/catkin/catkin_simple.git \
-    && cd xarm_ros && git pull && git submodule sync && git submodule update --init --remote
-
-
-RUN source /opt/ros/noetic/setup.bash
-# install franka panda gazebo
-# deps
-RUN apt install -y ros-$ROS_DISTRO-gazebo-ros-control ros-${ROS_DISTRO}-rospy-message-converter ros-${ROS_DISTRO}-effort-controllers ros-${ROS_DISTRO}-joint-state-controller ros-${ROS_DISTRO}-moveit ros-${ROS_DISTRO}-moveit-commander ros-${ROS_DISTRO}-moveit-visual-tools
-# RUN apt install -y ros-${ROS_DISTRO}-libfranka
-
-# RUN cd / && mkdir -p panda_ws/src && cd panda_ws/src
-# RUN source /opt/ros/noetic/setup.bash && cd /panda_ws/src && git clone -b noetic-devel https://github.com/justagist/panda_simulator
-
-# RUN cd /panda_ws/src/panda_simulator && ./build_ws.sh
-RUN pip install "numpy<1.24" && pip install numpy-quaternion==2020.5.11.13.33.35 && pip install numba
-
-RUN git clone https://github.com/xArm-Developer/xArm-Python-SDK.git && cd xArm-Python-SDK && python3 setup.py install
-
-RUN pip install hidapi==0.14.0.post4
-RUN apt install -y nano
-RUN pip install mpld3 packaging
-RUN apt install -y texlive texlive-latex-extra texlive-fonts-recommended dvipng
-
-RUN apt install ros-noetic-apriltag-ros -y
-
+# source ROS2
 RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> ~/.bashrc
-COPY ./entrypoint.sh /
-ENTRYPOINT [ "/entrypoint.sh" ]
-CMD ["bash"]
 
-ENV USER ubuntu
-ENV PASSWD ubuntu
+# RUN chmod a+x ros_entrypoint.sh
+COPY ./ros_entrypoint.sh /
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]

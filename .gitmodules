@@ -1,3 +1,4 @@
-[submodule "xarm_ros1_base"]
-	path = xarm_ros1_base
-	url = https://github.com/argallab/xarm_ros1_base.git
+# [submodule "xarm_base"]
+# 	path = xarm_base
+# 	url = https://github.com/argallab/xarm_base.git
+# 	branch = dev/jparse_ros2

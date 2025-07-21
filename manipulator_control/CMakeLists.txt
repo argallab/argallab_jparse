@@ -1,25 +1,50 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 project(manipulator_control)
 
-find_package(catkin_simple REQUIRED)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-catkin_python_setup()
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
 
-catkin_simple()
+include_directories(include)
+# uncomment the following section in order to fill in
+# further dependencies manually.
+# find_package(<dependency> REQUIRED)
 
+# make cpp executable
+add_executable(cpp_executable src/cpp_node.cpp) # need to edit with the appropriate names later
+ament_target_dependencies(cpp_executable rclcpp)
 
-## Add support for C++11, supported in ROS Kinetic and newer
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# install cpp executables
+install(TARGETS 
+  cpp_executables
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-find_package(Eigen3 REQUIRED)
+# install python modules
+ament_python_install_package(${PROJECT_NAME})
 
-include_directories(include ${EIGEN3_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${PCL_LIBRARIES})
+# install python executables
+install(PROGRAMS
+  scripts/python_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)  # need to edit with the appropriate names later
 
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-cs_add_executable(jparse src/jparse.cpp)
-
-
-cs_install()
-
-cs_export()
-#https://github.com/catkin/catkin_simple 
+ament_package()
