@@ -23,14 +23,15 @@ The `ros2_dev` branch is developing the support for *ROS 2 Jazzy* (coming soon).
 
 ## FOR ARGALLAB
 Instructions to teleop robot with jparse and keyboard:
+TODO: NEEDS TO BE TESTED and jparse_cls.py needs to be written!
 
-Launch the following (velocity_control param for the xarm7_gripper_moveit_config launchfile is left as false in this case):
+Launch the following:
 ```
-roslaunch xarm7_gripper_moveit_config realMove_exec.launch robot_ip:=<add the robot ip> add_gripper:=true
+ros2 launch xarm_moveit_config xarm7_moveit_realmove.launch.py robot_ip:=<add the robot ip> add_gripper:=true
 
-roslaunch manipulator_control xarm_main_vel.launch use_space_mouse:=true use_space_mouse_jparse:=true
+ros2 launch manipulator_control xarm_main_vel.launch use_teleop_control:=true use_teleop_control_jparse:=true
 
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py _stamped:=True _frame_id:=link_eef cmd_vel:=robot_action
+ros2 run teleop_twist_keyboard teleop_twist_keyboard stamped:=True frame_id:=link_eef --ros-args --remap cmd_vel:=robot_action
 ```
 
 Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
