@@ -39,6 +39,13 @@ Edits need to be still commpleted to test the robot after writing script for joy
 - [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled
 - [ ] port to ros2 (need pinnochio)
 
+## Dependencies needed
+There are all GitHub repos that can be cloned and added to this workspace.
+- `catkin_simple`
+- `teleop_twist_keyboard`
+- `xArm-Python-SDK`
+- `xarm_ros`
+
 ## Quick Start with Docker
 
 To build the Docker image for the our environment, we use VNC docker, which allows for a graphical user interface displayable in the browser.
