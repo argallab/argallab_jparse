@@ -20,6 +20,20 @@ _In Submission_
 
 
 ## FOR ARGALLAB
+Instructions for things to launch depending on what you want to do.
+
+### JOYSTICK or SSIP/PUFF Teleop
+```
+roslaunch xarm7_gripper_moveit_config realMove_exec.launch robot_ip:=<add the robot ip> add_gripper:=true
+
+roslaunch manipulator_control xarm_main_vel.launch use_space_mouse:=true use_space_mouse_jparse:=true
+
+roslaunch xarm_teleop xarm_teleop.launch JOY:=true (or SNP:=true)
+```
+
+*NOTE:* The GUI needs to be edited that is the paradigm is 3 (meaning 3-axis joystick mapping), then no GUI is required. (7/31/25)
+
+### Keyboard Teleop
 Instructions to teleop robot with jparse and keyboard:
 
 Launch the following (velocity_control param for the xarm7_gripper_moveit_config launchfile is left as false in this case):
