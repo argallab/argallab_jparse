@@ -86,11 +86,14 @@ class ArmController:
         self.tf_timeout = rospy.Duration(1.0)
 
         # gripper initialization
-        self.gripper_pose = 0 # means the gripper is open ( [0...1] where 1 is fully closed.)
+        self.gripper_pose = 900 # means the gripper is open
         self.gripper_speed = 300  # max
         self.gripper_update_rate = 10 # Hz
         self.gripper_min = 0 
         self.gripper_max = 900
+        # this enables the gripper and then sets the gripper to open position
+        self.arm.set_gripper_enable(True)
+        self.arm.set_gripper_position(self.gripper_pose)
 
         # Subscribers
         self.initialize_subscribers()

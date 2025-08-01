@@ -47,11 +47,15 @@ rosrun teleop_twist_keyboard teleop_twist_keyboard.py _stamped:=True _frame_id:=
 
 Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
 
+### Gripper Notes
+In order for the gripper to work, you need to first command the gripper in Rviz, then the the gripper will work. I am working on another fix for this. I am thinking it has to do with enabling the gripper potentially (8/1/25).
+This has been fixed by enabling the gripper (8/1/25).
+
 ## FOR ARGALLAB TO DOS (not in order of to do):
-- [ ] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
-- [ ] self-avoidance collision
-- [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled
-- [ ] port to ros2 (need pinnochio)
+- [x] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
+- [ ] self-avoidance collision -- wait till ros2 port
+- [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled -- wait till ros2 port
+- [ ] **port to ros2 (need pinnochio) --> working on this!**
 
 ## Dependencies needed
 There are all GitHub repos that can be cloned and added to this workspace.
