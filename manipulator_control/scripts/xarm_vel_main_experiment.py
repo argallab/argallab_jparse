@@ -85,6 +85,13 @@ class ArmController:
         self.tfros = tf.TransformerROS()
         self.tf_timeout = rospy.Duration(1.0)
 
+        # gripper initialization
+        self.gripper_pose = 0 # means the gripper is open ( [0...1] where 1 is fully closed.)
+        self.gripper_speed = 300  # max
+        self.gripper_update_rate = 10 # Hz
+        self.gripper_min = 0 
+        self.gripper_max = 900
+
         # Subscribers
         self.initialize_subscribers()
         
@@ -95,20 +102,19 @@ class ArmController:
         self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         # Initialize the current positions
         self.current_positions = [0.0] * len(self.joint_names)
-        self.gripper_pose = 0.0 # means the gripper is open ( [0...1] where 1 is fully closed.)
 
         self.rate = rospy.Rate(50)  # 10 Hz
         #home the robot
-        try:
-            self.velocity_home_robot()
-        except rospy.ROSInterruptException:
-            rospy.loginfo("ROS Interrupt Exception")
-            pass
-        finally:
-            # Clean up resources if needed
-            rospy.loginfo("Shutting down the control loop")
-            joint_zero_velocities = [0.0] * len(self.joint_names)
-            self.command_joint_velocities(joint_zero_velocities)
+        # try:
+        #     self.velocity_home_robot()
+        # except rospy.ROSInterruptException:
+        #     rospy.loginfo("ROS Interrupt Exception")
+        #     pass
+        # finally:
+        # Clean up resources if needed
+        rospy.loginfo("Shutting down the control loop")
+        joint_zero_velocities = [0.0] * len(self.joint_names)
+        self.command_joint_velocities(joint_zero_velocities)
         #now run the control loop
         self.control_loop()
 
@@ -149,7 +155,13 @@ class ArmController:
     
     def gripper_position_callback(self, msg):
         """Callback for the gripper. It includes the gripper position value. Float32 value."""
-        self.gripper_pose = msg
+        # rospy.loginfo(msg)
+        joystick_gripper_pose = msg.data
+        # convert the joystick value to gripper poses [-1, 1] is to [0, 900], where 0 is close and 900 is open
+        delta = joystick_gripper_pose * (self.gripper_speed / self.gripper_update_rate)
+        self.gripper_pose += delta
+        self.gripper_pose = max(min(self.gripper_pose, self.gripper_max), self.gripper_min)
+
 
     def joint_states_callback(self, msg):
         """
@@ -571,10 +583,9 @@ class ArmController:
             # log the velocities
             # rospy.loginfo("Joint velocities: %s", joint_vel_list)
             if self.use_space_mouse_jparse:
-                rospy.loginfo("IN HETRE GOOOOOD!!")
+                rospy.loginfo("IN HERE GOOOOOD!!") 
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
-                # include the gripper as well
-                # self.arm.set_gripper_position(self.gripper_pose)
+                self.arm.set_gripper_position(self.gripper_pose)
 
 
 if __name__ == '__main__':
