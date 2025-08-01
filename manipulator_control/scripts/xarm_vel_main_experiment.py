@@ -16,7 +16,7 @@ from pykdl_utils.kdl_kinematics import joint_list_to_kdl
 
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose, PoseStamped, Vector3, TwistStamped
-from std_msgs.msg import Float64MultiArray, Float64
+from std_msgs.msg import Float64MultiArray, Float64, Float32
 from sensor_msgs.msg import JointState
 import tf
 from tf import TransformerROS
@@ -50,7 +50,6 @@ class ArmController:
 
         self.use_space_mouse = rospy.get_param('~use_space_mouse', False) #boolean to control if the space mouse is used or not
         self.use_space_mouse_jparse = rospy.get_param('~use_space_mouse_jparse', False) #boolean to control if the space mouse is used or not
-
         self.space_mouse_command = np.array([0,0,0,0,0,0]).T
 
         if self.is_sim == False:
@@ -86,37 +85,17 @@ class ArmController:
         self.tfros = tf.TransformerROS()
         self.tf_timeout = rospy.Duration(1.0)
 
-        if self.is_sim == True:
-            #if we are in simulation, use the joint_states and target_pose topics
-            joint_states_topic = '/xarm/joint_states'
-        else:
-            joint_states_topic = '/joint_states'
-
-        rospy.Subscriber(joint_states_topic, JointState, self.joint_states_callback)
-        rospy.Subscriber('/target_pose', PoseStamped, self.target_pose_callback)
-        rospy.Subscriber('/robot_action', TwistStamped, self.space_mouse_callback)
+        # Subscribers
+        self.initialize_subscribers()
         
-        
-        self.manip_measure_pub = rospy.Publisher('/manip_measure', Float64, queue_size=10)
-        self.inverse_cond_number = rospy.Publisher('/inverse_cond_number', Float64, queue_size=10)
-        #have certain messages to store raw error
-        self.pose_error_pub = rospy.Publisher('/pose_error', PoseStamped, queue_size=10)
-        self.position_error_pub = rospy.Publisher('/position_error', Vector3, queue_size=10)
-        self.orientation_error_pub = rospy.Publisher('/orientation_error', Vector3, queue_size=10)
-        #have certain messages to store control error
-        self.pose_error_control_pub = rospy.Publisher('/pose_error_control', PoseStamped, queue_size=10)
-        self.position_error_control_pub = rospy.Publisher('/position_error_control', Vector3, queue_size=10)
-        self.orientation_control_error_pub = rospy.Publisher('/orientation_error_control', Vector3, queue_size=10)
-        #publish the current end effector pose and target pose
-        self.current_end_effector_pose_pub = rospy.Publisher('/current_end_effector_pose', PoseStamped, queue_size=10)
-        self.current_target_pose_pub = rospy.Publisher('/current_target_pose', PoseStamped, queue_size=10)
+        # Publishers
+        self.initialize_publishers()
 
-        joint_command_topic = rospy.get_param('~joint_command_topic', '/xarm/xarm7_velo_traj_controller/command')
-        self.joint_vel_pub = rospy.Publisher(joint_command_topic, JointTrajectory, queue_size=10)
         # Define the joint names
         self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         # Initialize the current positions
         self.current_positions = [0.0] * len(self.joint_names)
+        self.gripper_pose = 0.0 # means the gripper is open ( [0...1] where 1 is fully closed.)
 
         self.rate = rospy.Rate(50)  # 10 Hz
         #home the robot
@@ -133,8 +112,44 @@ class ArmController:
         #now run the control loop
         self.control_loop()
 
+    def initialize_subscribers(self):
+        """Subscribers"""
+        if self.is_sim == True:
+            #if we are in simulation, use the joint_states and target_pose topics
+            joint_states_topic = '/xarm/joint_states'
+        else:
+            joint_states_topic = '/joint_states'
+
+        rospy.Subscriber(joint_states_topic, JointState, self.joint_states_callback)
+        rospy.Subscriber('/target_pose', PoseStamped, self.target_pose_callback)
+        rospy.Subscriber('/robot_action', TwistStamped, self.space_mouse_callback)
+        rospy.Subscriber('/gripper_action', Float32, self.gripper_position_callback)
+
+    def initialize_publishers(self):
+        """Publishers"""
+        self.manip_measure_pub = rospy.Publisher('/manip_measure', Float64, queue_size=10)
+        self.inverse_cond_number = rospy.Publisher('/inverse_cond_number', Float64, queue_size=10)
+        #have certain messages to store raw error
+        self.pose_error_pub = rospy.Publisher('/pose_error', PoseStamped, queue_size=10)
+        self.position_error_pub = rospy.Publisher('/position_error', Vector3, queue_size=10)
+        self.orientation_error_pub = rospy.Publisher('/orientation_error', Vector3, queue_size=10)
+        #have certain messages to store control error
+        self.pose_error_control_pub = rospy.Publisher('/pose_error_control', PoseStamped, queue_size=10)
+        self.position_error_control_pub = rospy.Publisher('/position_error_control', Vector3, queue_size=10)
+        self.orientation_control_error_pub = rospy.Publisher('/orientation_error_control', Vector3, queue_size=10)
+        #publish the current end effector pose and target pose
+        self.current_end_effector_pose_pub = rospy.Publisher('/current_end_effector_pose', PoseStamped, queue_size=10)
+        self.current_target_pose_pub = rospy.Publisher('/current_target_pose', PoseStamped, queue_size=10)
+
+        joint_command_topic = rospy.get_param('~joint_command_topic', '/xarm/xarm7_velo_traj_controller/command')
+        self.joint_vel_pub = rospy.Publisher(joint_command_topic, JointTrajectory, queue_size=10)
+
     def rad2deg(self, q):
         return q/math.pi*180.0
+    
+    def gripper_position_callback(self, msg):
+        """Callback for the gripper. It includes the gripper position value. Float32 value."""
+        self.gripper_pose = msg
 
     def joint_states_callback(self, msg):
         """
@@ -160,7 +175,6 @@ class ArmController:
         if position_velocity_norm > 0.05:
             position_velocity = position_velocity / position_velocity_norm * 0.05
         self.space_mouse_command = np.array([position_velocity[0], position_velocity[1],position_velocity[2],angular_velocity[0],angular_velocity[1],angular_velocity[2]])        #check if norm of the space mouse command is greater than 0.05, if so normalize it to this value
-
         #ensure we can get into the while loop
         if self.use_space_mouse == True:
             self.target_pose = PoseStamped() #set this to get in a loop
@@ -410,8 +424,8 @@ class ArmController:
                 self.manip_measure_pub.publish(manip_measure)
                 inverse_cond_number = self.jacobian_calculator.inverse_condition_number(q)
                 self.inverse_cond_number.publish(inverse_cond_number)
-                rospy.loginfo("Manipulability measure: %f", manip_measure)
-                rospy.loginfo("Inverse condition number: %f", inverse_cond_number)
+                # rospy.loginfo("Manipulability measure: %f", manip_measure)
+                # rospy.loginfo("Inverse condition number: %f", inverse_cond_number)
                 #Calculate the delta_x (task space error)
                 target_pose = self.target_pose
                 current_pose = self.EndEffectorPose(q)
@@ -555,12 +569,12 @@ class ArmController:
             # this is on the real robot, directly send joint velociteies
             # Send joint velocities to the arm
             # log the velocities
-            rospy.loginfo("Joint velocities: %s", joint_vel_list)
+            # rospy.loginfo("Joint velocities: %s", joint_vel_list)
             if self.use_space_mouse_jparse:
+                rospy.loginfo("IN HETRE GOOOOOD!!")
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
-            # elif self.use_keyboard_jparse:
-            #     rospy.loginfo("hello using the keyboard jparse!")
-            #     # self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)  # commenting out for now to test
+                # include the gripper as well
+                # self.arm.set_gripper_position(self.gripper_pose)
 
 
 if __name__ == '__main__':
