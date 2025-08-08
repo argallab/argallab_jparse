@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 include_directories(include)
 # uncomment the following section in order to fill in
@@ -17,23 +18,24 @@ include_directories(include)
 # find_package(<dependency> REQUIRED)
 
 # make cpp executable
-add_executable(cpp_executable src/cpp_node.cpp) # need to edit with the appropriate names later
-ament_target_dependencies(cpp_executable rclcpp)
+# add_executable(cpp_executable src/cpp_node.cpp) # need to edit with the appropriate names later
+# ament_target_dependencies(cpp_executable rclcpp)
 
 # install cpp executables
-install(TARGETS 
-  cpp_executables
-  DESTINATION lib/${PROJECT_NAME}
-)
+# install(TARGETS 
+#   cpp_executables
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
 # install python modules
 ament_python_install_package(${PROJECT_NAME})
 
 # install python executables 
 install(PROGRAMS
-  scripts/python_node.py
+  scripts/jparse_cls.py
+  scripts/xarm_vel_main_experiment.py
   DESTINATION lib/${PROJECT_NAME}
-)  # need to edit with the appropriate names later
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -2,6 +2,7 @@ import sys
 import rclpy
 from rclpy.node import Node
 import numpy as np
+import pinocchio as pin
 import math
 import time
 
@@ -9,7 +10,7 @@ import time
 import tf2_ros
 from tf.transformations import quaternion_from_euler, quaternion_matrix
 from geometry_msgs.msg import Pose, PoseStamped, Vector3, TwistStamped
-from std_msgs.msg import Float64MultiArray, Float64
+from std_msgs.msg import Float64MultiArray, Float64, Float32
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
@@ -26,8 +27,8 @@ class ArmController(Node):
         super().__init__('arm_controller')
 
         # Initialize parameters
-        self.base_link = self.declare_parameter('/base_link', 'base_link').get_parameter_value().string_value # defaults are for Kinova gen3
-        self.end_link = self.declare_parameter('/end_link', 'lnk_eef').get_parameter_value().string_value
+        self.base_link = self.declare_parameter('/base_link', 'link_base').get_parameter_value().string_value # defaults are for xarm
+        self.end_link = self.declare_parameter('/end_link', 'link_eef').get_parameter_value().string_value
 
         self.is_sim = self.declare_parameter('~is_sim', False).get_parameter_value().bool_value #boolean to control if the robot is in simulation or not
 
@@ -77,6 +78,16 @@ class ArmController(Node):
         self.get_logger().info("ArmController initialized with base link: {}, end link: {}".format(self.base_link, self.end_link))
         self.tf2_timeout = rclpy.duration.Duration(seconds=1.0)
 
+        # gripper initialization
+        self.gripper_pose = 900 # means the gripper is open
+        self.gripper_speed = 300  # max
+        self.gripper_update_rate = 10 # Hz
+        self.gripper_min = 0  # closed
+        self.gripper_max = 900 # fully opened
+        # this enables the gripper and then sets the gripper to open position
+        self.arm.set_gripper_enable(True)
+        self.arm.set_gripper_position(self.gripper_pose)
+
         if self.is_sim == True:
             #if we are in simulation, use the joint_states and target_pose topics
             self.joint_states_topic = '/xarm/joint_states'
@@ -94,18 +105,38 @@ class ArmController(Node):
         # Initialize the current positions
         self.current_positions = [0.0] * len(self.joint_names)
 
+        ## NEW for pinocchio (8/8/2025) ##
+        # hard-coded for now
+        model_path = "/home/workspace/src/xarm_ros2/xarm_description/xarm7"
+        urdf_filename = "xarm7.urdf.xacro" ## note to self: need to change this from xacro to just urdf usign the command "xacro xarm7.urdf.xacro > xarm7.urdf" -- however, the robot needs to be launched but this is not working currently when I tested it
+        urdf_path = model_path + "/" + urdf_filename
+
+        # to test as well
+        # urdf_string = self.get_parameter('robot_description').value
+        # self.model = pin.RobotWrapper.BuildFromURDF(urdf_string)  # need to figure out what this does differently from the one below
+        pin.buildModelsFromUrdf()
+        # Create model and data
+        self.model = pin.buildModelsFromUrdf(urdf_filename) #pin.Model()
+        self.data = self.model.createData()
+
+        # there is also this method:
+        
+
+
+
+
         self.rate = self.create_rate(10)  # 10 Hz
         #home the robot
-        try:
-            self.velocity_home_robot()
-        except Exception as e:
-            self.get_logger().error(f"Failed to home the robot: {e}")
-            pass
-        finally:
-            # Clean up resources if needed
-            self.get_logger().info("Shutting down the control loop")
-            joint_zero_velocities = [0.0] * len(self.joint_names)
-            self.command_joint_velocities(joint_zero_velocities)
+        # try:
+        #     self.velocity_home_robot()
+        # except Exception as e:
+        #     self.get_logger().error(f"Failed to home the robot: {e}")
+        #     pass
+        # finally:
+        #     # Clean up resources if needed
+        #     self.get_logger().info("Shutting down the control loop")
+        joint_zero_velocities = [0.0] * len(self.joint_names)
+        self.command_joint_velocities(joint_zero_velocities)
         #now run the control loop
         self.control_loop()
 
@@ -120,6 +151,8 @@ class ArmController(Node):
             PoseStamped, '/target_pose', self.target_pose_callback, 10)
         self.teleop_control_sub = self.create_subscription(
             TwistStamped, 'robot_action', self.teleop_control_callback, 10)
+        self.gripper_action_sub = self.create_subscription(
+            Float32, '/gripper_action', self.gripper_position_callback)
         
     def initialize_publishers(self):
         # publishers
@@ -145,6 +178,15 @@ class ArmController(Node):
     ##########################################################################################################
     ############################# CALLBACKS FOR SUBSCRIBERS ##################################################
     ##########################################################################################################
+    def gripper_position_callback(self, msg):
+        """Callback for the gripper. It includes the gripper position value. Float32 value."""
+        # self.get_logger().info(msg)
+        joystick_gripper_pose = msg.data
+        # convert the joystick value to gripper poses [-1, 1] is to [0, 900], where 0 is close and 900 is open
+        delta = joystick_gripper_pose * (self.gripper_speed / self.gripper_update_rate)
+        self.gripper_pose += delta
+        self.gripper_pose = max(min(self.gripper_pose, self.gripper_max), self.gripper_min)
+
     def joint_states_callback(self, msg):
         """
         Callback function for the joint_states topic. This function will be called whenever a new message is received
@@ -181,7 +223,13 @@ class ArmController(Node):
         """
         self.target_pose = msg
         self.current_target_pose_pub.publish(self.target_pose) #if target pose is paused manually, this allows us to track the current target pose seen by the script
-
+    
+    ##########################################################################################################
+    ####################################### HELPER FUNCTIONS #################################################
+    ##########################################################################################################
+    def rad2deg(self, q):
+        return q/math.pi*180.0
+    
     def EndEffectorPose(self, q):
         """
         This function computes the end-effector pose given the joint configuration q.
@@ -204,21 +252,16 @@ class ArmController(Node):
         self.current_end_effector_pose_pub.publish(current_pose)
         return current_pose
     
-    ##########################################################################################################
-    ####################################### HELPER FUNCTIONS #################################################
-    ##########################################################################################################
-    def rad2deg(self, q):
-        return q/math.pi*180.0
-    
-    def EndEffectorVelocity(self, q, dq):
-        """
-        This function computes the end-effector velocity given the joint configuration q and joint velocities dq.
-        """
-        J = self.jacobian_calculator.jacobian(q)
-        J = np.array(J)
-        dq = np.array(dq)
-        dx = np.dot(J, dq)
-        return dx
+    # not needed for the xarm control so commenting out
+    # def EndEffectorVelocity(self, q, dq):
+    #     """
+    #     This function computes the end-effector velocity given the joint configuration q and joint velocities dq.
+    #     """
+    #     J = self.jacobian_calculator.jacobian(q)
+    #     J = np.array(J)
+    #     dq = np.array(dq)
+    #     dx = np.dot(J, dq)
+    #     return dx
     
     def rotation_matrix_to_axis_angle(self,R):
         """
@@ -452,6 +495,8 @@ class ArmController(Node):
     def control_loop(self):
         """
         This function implements the control loop for the arm controller.
+
+        TODO: Need to compute the jacobian and then pass that to JParse and dont need all the comparisons!! (8/8/25)
         """
 
         while not rclpy.is_shutdown():
@@ -469,12 +514,21 @@ class ArmController(Node):
                     effort.append(self.joint_states.effort[idx])  
                 self.current_positions = q
                 # Calculate the JParsed Jacobian
+
+                # NEW # 8/8/2025
+                # 1) Forward kinematics
+                pin.forwardKinematics(self.model, self.data, q)
+                pin.updateFramePlacements(self.model, self.data)
+
+                # 2) Compute joint Jacobians
+                pin.computeJointJacobians(self.model, self.data, q)
                 
                 method = self.method #set by parameter, can be set from launch file
                 self.get_logger().info("Method being used: %s", method)
                 if method == "JacobianPseudoInverse":
                     #this is the traditional pseudo-inverse method for the jacobian
-                    J_method, J_nullspace = self.jacobian_calculator.JacobianPseudoInverse(q=q, position_only=self.position_only, jac_nullspace_bool=True)
+                    # J_method, J_nullspace = self.jacobian_calculator.JacobianPseudoInverse(q=q, position_only=self.position_only, jac_nullspace_bool=True)
+                    raise NotImplementedError
                 elif method == "JParse":
                     # The JParse method takes in the joint angles, gamma, position_only, and singular_direction_gain
                     if self.show_jparse_ellipses == True:
@@ -482,10 +536,12 @@ class ArmController(Node):
                     else:
                         J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position,singular_direction_gain_angular=self.phi_gain_angular, jac_nullspace_bool=True)
                 elif method == "JacobianDampedLeastSquares":
-                    J_method, J_nullspace = self.jacobian_calculator.jacobian_damped_least_squares(q=q, damping=0.1, jac_nullspace_bool=True) #dampening of 0.1 works very well, 0.8 shows clear error
+                    # J_method, J_nullspace = self.jacobian_calculator.jacobian_damped_least_squares(q=q, damping=0.1, jac_nullspace_bool=True) #dampening of 0.1 works very well, 0.8 shows clear error
+                    raise NotImplementedError
                 elif method == "JacobianProjection":
-                    J_proj, J_nullspace = self.jacobian_calculator.jacobian_projection(q=q, gamma=0.1, jac_nullspace_bool=True)
-                    J_method = np.linalg.pinv(J_proj)
+                    # J_proj, J_nullspace = self.jacobian_calculator.jacobian_projection(q=q, gamma=0.1, jac_nullspace_bool=True)
+                    # J_method = np.linalg.pinv(J_proj)
+                    raise NotImplementedError
                 elif method == "JacobianSafety":
                     # The JParse method takes in the joint angles, gamma, position_only, and singular_direction_gain
                     if self.show_jparse_ellipses == True:
@@ -499,13 +555,6 @@ class ArmController(Node):
                     else:
                         J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position,singular_direction_gain_angular=self.phi_gain_angular, jac_nullspace_bool=True, safety_projection_only=True)
 
-
-                manip_measure = self.jacobian_calculator.manipulability_measure(q)
-                self.manip_measure_pub.publish(manip_measure)
-                inverse_cond_number = self.jacobian_calculator.inverse_condition_number(q)
-                self.inverse_cond_number.publish(inverse_cond_number)
-                self.get_logger().info("Manipulability measure: %f", manip_measure)
-                self.get_logger().info("Inverse condition number: %f", inverse_cond_number)
                 #Calculate the delta_x (task space error)
                 target_pose = self.target_pose
                 current_pose = self.EndEffectorPose(q)

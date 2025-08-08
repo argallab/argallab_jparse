@@ -21,7 +21,7 @@ _In Submission_
 The `main` branch is supporting *ROS Noetic*.
 The `ros2_dev` branch is developing the support for *ROS 2 Jazzy* (coming soon).
 
-## FOR ARGALLAB
+## FOR ARGALLAB (ROS 2)
 Instructions to teleop robot with jparse and keyboard:
 TODO: NEEDS TO BE TESTED and jparse_cls.py needs to be written!
 
@@ -37,10 +37,10 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard stamped:=True frame_id:=lin
 Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
 
 ## FOR ARGALLAB TO DOS (not in order of to do):
-- [ ] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
-- [ ] self-avoidance collision
-- [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled
-- [ ] port to ros2 (need pinnochio)
+- [x] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
+- [ ] self-avoidance collision -- waiting for ros 2 port
+- [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled -- waiting for ros 2 port
+- [ ] port to ros2 (need pinnochio) -- WORKING ON!!
 
 
 ### Instructions for Argallab
