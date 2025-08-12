@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 import rclpy
 from rclpy.node import Node
@@ -8,11 +9,19 @@ import time
 
 # ros2 stuff
 import tf2_ros
-from tf.transformations import quaternion_from_euler, quaternion_matrix
+###
+# Depricated ROS1 package; using transforms3d or scipy.spatial.transform for ROS2
+# from tf2.transformations import quaternion_from_euler, quaternion_matrix 
+# from transforms3d import quaternion_matrix, quaternion_from_euler
+from scipy.spatial.transform import Rotation as R 
+###
+
 from geometry_msgs.msg import Pose, PoseStamped, Vector3, TwistStamped
 from std_msgs.msg import Float64MultiArray, Float64, Float32
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, ReliabilityPolicy, DurabilityPolicy
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 
 try:
     from xarm.wrapper import XArmAPI
@@ -25,6 +34,8 @@ import jparse_cls
 class ArmController(Node):
     def __init__(self):
         super().__init__('arm_controller')
+
+        self.get_logger().info("node started")
 
         # Initialize parameters
         self.base_link = self.declare_parameter('/base_link', 'link_base').get_parameter_value().string_value # defaults are for xarm
@@ -39,9 +50,9 @@ class ArmController(Node):
         self.jparse_gamma = self.declare_parameter('~jparse_gamma', 0.1).get_parameter_value().double_value #gamma for the JParse method
 
         # used to be self.use_space_mouse and self.use_space_mouse_jparse
-        self.use_teleop_control = self.declare_parameter('~use_teleop_control', False).get_parameter_value().bool_value #boolean to control if the robot is in teleoperation mode or not
-        self.use_teleop_control_jparse = self.declare_parameter('~use_teleop_control_jparse', False).get_parameter_value().bool_value #boolean to control if the robot is in teleoperation mode with JParse
-
+        self.use_teleop_control = self.declare_parameter('~use_teleop_control', True).get_parameter_value().bool_value #boolean to control if the robot is in teleoperation mode or not
+        self.use_teleop_control_jparse = self.declare_parameter('~use_teleop_control_jparse', True).get_parameter_value().bool_value #boolean to control if the robot is in teleoperation mode with JParse
+        self.get_logger().info(f"VALUES HERE {self.use_teleop_control} and {self.use_teleop_control_jparse}")
         # used to be self.space_mouse_command
         self.teleop_control_command = np.array([0,0,0,0,0,0]).T
 
@@ -88,12 +99,6 @@ class ArmController(Node):
         self.arm.set_gripper_enable(True)
         self.arm.set_gripper_position(self.gripper_pose)
 
-        if self.is_sim == True:
-            #if we are in simulation, use the joint_states and target_pose topics
-            self.joint_states_topic = '/xarm/joint_states'
-        else:
-            self.joint_states_topic = '/joint_states'
-
         
         # Initialize publishers and subscribers
         self.initialize_subscribers()
@@ -107,26 +112,28 @@ class ArmController(Node):
 
         ## NEW for pinocchio (8/8/2025) ##
         # hard-coded for now
-        model_path = "/home/workspace/src/xarm_ros2/xarm_description/xarm7"
-        urdf_filename = "xarm7.urdf.xacro" ## note to self: need to change this from xacro to just urdf usign the command "xacro xarm7.urdf.xacro > xarm7.urdf" -- however, the robot needs to be launched but this is not working currently when I tested it
-        urdf_path = model_path + "/" + urdf_filename
+        urdf_filename = "/workspace/xarm7.urdf"
+        # urdf_filename = "xarm7.urdf.xacro" ## note to self: need to change this from xacro to just urdf usign the command "xacro xarm7.urdf.xacro > xarm7.urdf" -- however, the robot needs to be launched but this is not working currently when I tested it
+        # urdf_path = model_path + "/" + urdf_filename
 
-        # to test as well
+
+        # to test as wellquaternion_matrix
         # urdf_string = self.get_parameter('robot_description').value
-        # self.model = pin.RobotWrapper.BuildFromURDF(urdf_string)  # need to figure out what this does differently from the one below
-        pin.buildModelsFromUrdf()
+        # robot = pin.RobotWrapper.BuildFromURDF(urdf_string)  # need to figure out what this does differently from the one below
+        # self.model = robot.model
+        # self.data = robot.data
+
+        # pin.buildModelsFromUrdf()
         # Create model and data
-        self.model = pin.buildModelsFromUrdf(urdf_filename) #pin.Model()
+        # from IPython import embed; embed(banner1="looking at pin stuff")
+        self.model = pin.buildModelFromUrdf(urdf_filename) #pin.Model()
         self.data = self.model.createData()
 
-        # there is also this method:
+        # another way:
+        # from robot data
         
-
-
-
-
-        self.rate = self.create_rate(10)  # 10 Hz
-        #home the robot
+        # self.rate = self.create_rate(10)  # 10 Hz
+        # #home the robot
         # try:
         #     self.velocity_home_robot()
         # except Exception as e:
@@ -135,24 +142,43 @@ class ArmController(Node):
         # finally:
         #     # Clean up resources if needed
         #     self.get_logger().info("Shutting down the control loop")
-        joint_zero_velocities = [0.0] * len(self.joint_names)
-        self.command_joint_velocities(joint_zero_velocities)
+        #     joint_zero_velocities = [0.0] * len(self.joint_names)
+        #     # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
+        #     self.command_joint_velocities(joint_zero_velocities)
         #now run the control loop
-        self.control_loop()
+        # self.control_loop()
+
+        # self.timer = self.create_timer(10, self.timer_callback)
+
+
+    # def timer_callback(self):
+        # if self.joint_states is not None:
+        # self.velocity_home_robot()
 
     #########################################################################################################
     ############################# SUBSCRIBERS AND PUBLISHERS INITIALIZATION #################################
     #########################################################################################################
     def initialize_subscribers(self):
+        self.get_logger().info("Init subs")
+        if self.is_sim == True:
+            #if we are in simulation, use the joint_states and target_pose topics
+            joint_states_topic = '/xarm/joint_states'
+        else:
+            joint_states_topic = '/joint_states'
+
+        self.get_logger().info(f"joint states topic name {joint_states_topic}")
         # subscribers
+        # js_qos = QoSProfile(depth=10, durability=DurabilityPolicy.VOLATILE)
+        js_cb_g = ReentrantCallbackGroup()
         self.joint_state_sub = self.create_subscription(
-            JointState, self.joint_states_topic, self.joint_states_callback, 10)
+            JointState, joint_states_topic, self.joint_states_callback, 10)
+            # , callback_group=js_cb_g)
         self.target_pose_sub = self.create_subscription(
-            PoseStamped, '/target_pose', self.target_pose_callback, 10)
+            PoseStamped, '/target_pose', self.target_pose_callback, 1)
         self.teleop_control_sub = self.create_subscription(
-            TwistStamped, 'robot_action', self.teleop_control_callback, 10)
+            TwistStamped, 'robot_action', self.teleop_control_callback, 1)
         self.gripper_action_sub = self.create_subscription(
-            Float32, '/gripper_action', self.gripper_position_callback)
+            Float32, '/gripper_action', self.gripper_position_callback, 1)
         
     def initialize_publishers(self):
         # publishers
@@ -170,7 +196,6 @@ class ArmController(Node):
         self.current_end_effector_pose_pub = self.create_publisher(PoseStamped, '/current_end_effector_pose', 10)
         self.current_target_pose_pub = self.create_publisher(PoseStamped, '/current_target_pose', 10)
 
-        #TODO: need to check that the default topic is correct for the xarm in ros2!!!! (7/21/25)
         joint_command_topic = self.declare_parameter('~joint_command_topic', '/xarm/xarm7_velo_traj_controller/command').get_parameter_value().string_value
         self.joint_vel_pub = self.create_publisher(JointTrajectory, joint_command_topic, 10)
 
@@ -194,7 +219,9 @@ class ArmController(Node):
         and the corresponding joint velocities and efforts. This function will extract the joint positions, velocities, 
         and efforts and return them as lists.
         """
+        # self.get_logger().info(f"HELLLLLOOOO joint states callback {msg}")
         self.joint_states = msg
+        self.velocity_home_robot()
 
     def teleop_control_callback(self, msg):
         """
@@ -214,7 +241,7 @@ class ArmController(Node):
 
         #ensure we can get into the while loop
         if self.use_teleop_control == True:
-            self.target_pose = PoseStamped() #set this to get in a loop
+            self.target_pose = PoseStamped() #set this tfrom scipy.spatial.transform import Rotation as R o get in a loop
 
     def target_pose_callback(self, msg):
         """
@@ -248,7 +275,8 @@ class ArmController(Node):
             current_pose.pose.orientation.w = trans.transform.rotation.w
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             self.get_logger().error("TF lookup failed")
-            self.get_logger().error("failed to lookup transform from %s to %s", self.base_link, self.end_link)
+            self.get_logger().error(f"base link {self.base_link}")
+            self.get_logger().error(f"end link {self.end_link}")
         self.current_end_effector_pose_pub.publish(current_pose)
         return current_pose
     
@@ -300,7 +328,7 @@ class ArmController(Node):
         ]) / (2 * np.sin(angle))
 
         return axis * angle
-    
+
     def pose_error(self, current_pose, target_pose, error_norm_max = 0.05, control_pose_error = True):
         """
         This function computes the error between the current pose and the target pose.
@@ -315,8 +343,18 @@ class ArmController(Node):
                 position_error = position_error / np.linalg.norm(position_error) * error_norm_max
 
         #convert the quaternion in posestamped to list of quaternions then pass this into quaternion_matrix to get the rotation matrix. Access only the rotation part of the matrix
-        goal_rotation_matrix = quaternion_matrix([target_pose.pose.orientation.x, target_pose.pose.orientation.y, target_pose.pose.orientation.z, target_pose.pose.orientation.w])[:3,:3]
-        current_rotation_matrix = quaternion_matrix([current_pose.pose.orientation.x, current_pose.pose.orientation.y, current_pose.pose.orientation.z, current_pose.pose.orientation.w])[:3,:3]
+        # goal_rotation_matrix = quaternion_matrix([target_pose.pose.orientation.x, target_pose.pose.orientation.y, target_pose.pose.orientation.z, target_pose.pose.orientation.w])[:3,:3]
+        # current_rotation_matrix = quaternion_matrix([current_pose.pose.orientation.x, current_pose.pose.orientation.y, current_pose.pose.orientation.z, current_pose.pose.orientation.w])[:3,:3]
+        
+        # for ros 2
+        goal_quat_scripy = np.array([target_pose.pose.orientation.w, target_pose.pose.orientation.x, target_pose.pose.orientation.y, target_pose.pose.orientation.z])
+        current_rotation_quat_scipy = np.array([current_pose.pose.orientation.w, current_pose.pose.orientation.x, current_pose.pose.orientation.y, current_pose.pose.orientation.z])
+        goal_rotation = R.from_quat(goal_quat_scripy)
+        current_rotation = R.from_quat(current_rotation_quat_scipy)
+
+        goal_rotation_matrix = goal_rotation.as_matrix()
+        current_rotation_matrix = current_rotation.as_matrix()
+
         #Compute the orientation error
         R_error= np.dot(goal_rotation_matrix, np.linalg.inv(current_rotation_matrix))
         # Extract the axis-angle lie algebra vector from the rotation matrix
@@ -379,12 +417,14 @@ class ArmController(Node):
         # do the following in a loop for 5 seconds:
         t_start = self.get_clock().now()
         duration = 0.0
-        while not rclpy.is_shutdown():
+        while rclpy.ok():
             if duration >= 5.0:
                 break
-            self.get_logger().info("Homing the robot")
-            if self.joint_states:
-                duration = (self.get_clock().now() - t_start).seconds
+            # self.get_logger().info("Homing the robot")
+        # self.get_logger().info(f"DEBUGGING: {self.joint_states}")
+            if self.joint_states is not None:
+                # self.get_logger().info("IN THE IF STATMENT")
+                # duration = (self.get_clock().now() - t_start).seconds
                 q = []
                 dq = []
                 for joint_name in self.joint_names:
@@ -400,7 +440,7 @@ class ArmController(Node):
                 q_home = [-0.03142359480261803, -0.5166178941726685, 0.12042707949876785, 0.9197863936424255, -0.03142168000340462, 1.4172008037567139, 0.03490765020251274]
                 #now find the error between the current position and the home position and use joint velocities to move towards the home position
                 joint_velocities_list = kp_gain * (np.array(q_home) - np.array(q))
-                
+                self.get_logger().info(f"joints for homing {joint_velocities_list}")
                 self.command_joint_velocities(joint_velocities_list)
 
     
@@ -485,8 +525,9 @@ class ArmController(Node):
             # this is on the real robot, directly send joint velociteies
             # Send joint velocities to the arm
             # log the velocities
-            self.get_logger().info("Joint velocities: %s", joint_vel_list)
+            
             if self.use_teleop_control_jparse:
+                self.get_logger().info(f"Joint velocities: {joint_vel_list}")
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
 
     ###############################################################################################################
@@ -499,7 +540,7 @@ class ArmController(Node):
         TODO: Need to compute the jacobian and then pass that to JParse and dont need all the comparisons!! (8/8/25)
         """
 
-        while not rclpy.is_shutdown():
+        while rclpy.ok():
 
             if self.joint_states is not None and self.teleop_control_command is not None:  # edited this 7/11/25
                 t = self.get_clock().now()
@@ -514,7 +555,7 @@ class ArmController(Node):
                     effort.append(self.joint_states.effort[idx])  
                 self.current_positions = q
                 # Calculate the JParsed Jacobian
-
+                # from IPython import embed; embed(banner1="hellloooooo")
                 # NEW # 8/8/2025
                 # 1) Forward kinematics
                 pin.forwardKinematics(self.model, self.data, q)
@@ -524,7 +565,7 @@ class ArmController(Node):
                 pin.computeJointJacobians(self.model, self.data, q)
                 
                 method = self.method #set by parameter, can be set from launch file
-                self.get_logger().info("Method being used: %s", method)
+                self.get_logger().info(f"Method being used: {method}")
                 if method == "JacobianPseudoInverse":
                     #this is the traditional pseudo-inverse method for the jacobian
                     # J_method, J_nullspace = self.jacobian_calculator.JacobianPseudoInverse(q=q, position_only=self.position_only, jac_nullspace_bool=True)
@@ -626,9 +667,18 @@ class ArmController(Node):
             self.rate.sleep()
             self.get_logger().info("Control loop running")
 
+# if __name__ == '__main__':
+#     try:
+#         ArmController()
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         pass
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ArmController()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
 if __name__ == '__main__':
-    try:
-        ArmController()
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        pass
+    main()

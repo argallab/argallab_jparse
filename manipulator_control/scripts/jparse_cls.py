@@ -26,7 +26,7 @@ class JParseClass(Node):
 
         self.base_link = base_link
         self.end_link = end_link
-        from IPython import embed; embed()
+        # from IPython import embed; embed()
         # Load URDF from parameter server
         # urdf = Robot.from_parameter_server()
         # model = pin.buildModelFromUrdf(urdf.to_xml_string())

@@ -18,24 +18,24 @@
     <!-- Set the jparse_gamma -->
     <arg name="jparse_gamma" default="0.1" />
     <!-- option to use teleoperation control (use an interface)-->
-    <arg name="use_teleop_control" default="False" />
-    <arg name="use_teleop_control_jparse" default="False" />
+    <arg name="use_teleop_control" default="True" />
+    <arg name="use_teleop_control_jparse" default="True" />
 
-    <node name="xarm_vel_main_experiment" pkg="manipulator_control" type="xarm_vel_main_experiment.py" output="screen">
+    <node name="xarm_vel_main_experiment" pkg="manipulator_control" exec="xarm_vel_main_experiment.py" output="screen">
         <!-- Add any necessary parameters or remappings here -->
-        <param name="position_only" value="$(arg position_only)" />
-        <param name="method" value="$(arg method)" />
-        <param name="joint_command_topic" value="$(arg joint_command_topic)" />
+        <param name="position_only" value="$(var position_only)" />
+        <param name="method" value="$(var method)" />
+        <param name="joint_command_topic" value="$(var joint_command_topic)" />
         <param name="base_link_name" value="link_base"/>
         <param name="end_link_name" value="link_eef"/>
-        <param name="is_sim" value="$(arg is_sim)" />
-        <param name="phi_gain_position" value="$(arg phi_gain_position)" />
-        <param name="phi_gain_angular" value="$(arg phi_gain_angular)" />
-        <param name="robot_ip" value="$(arg robot_ip)" />
-        <param name="show_jparse_ellipses" value="$(arg show_jparse_ellipses)" />
-        <param name="jparse_gamma" value="$(arg jparse_gamma)" />
-        <param name="use_teleop_control" value="$(arg use_teleop_control)" />
-        <param name="use_teleop_control_jparse" value="$(arg use_teleop_control_jparse)" />
+        <param name="is_sim" value="$(var is_sim)" />
+        <param name="phi_gain_position" value="$(var phi_gain_position)" />
+        <param name="phi_gain_angular" value="$(var phi_gain_angular)" />
+        <param name="robot_ip" value="$(var robot_ip)" />
+        <param name="show_jparse_ellipses" value="$(var show_jparse_ellipses)" />
+        <param name="jparse_gamma" value="$(var jparse_gamma)" />
+        <param name="use_teleop_control" value="$(var use_teleop_control)" />
+        <param name="use_teleop_control_jparse" value="$(var use_teleop_control_jparse)" />
     </node>
 
 </launch>
