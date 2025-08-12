@@ -31,6 +31,8 @@ except ImportError:
 import jparse_cls
 
 # Huge TODO: might need to implement the control loop as a timer callback instead of a while loop to avoid blocking the node (7/21/25)
+# Update as of 8/1125 -- need to make sure that velocity_home can be called somewhere not in the callback and then also need to edit the control loop with the new
+# arguments to Jparse from jparse_cls.py; then need to figure out also where to call it to run
 class ArmController(Node):
     def __init__(self):
         super().__init__('arm_controller')
@@ -148,12 +150,26 @@ class ArmController(Node):
         #now run the control loop
         # self.control_loop()
 
-        # self.timer = self.create_timer(10, self.timer_callback)
+    #     self.timer = self.create_timer(10, self.timer_callback)
 
 
     # def timer_callback(self):
-        # if self.joint_states is not None:
-        # self.velocity_home_robot()
+    #     # if self.joint_states is not None:
+    #     # self.velocity_home_robot()
+    #     #home the robot
+    #     try:
+    #         self.velocity_home_robot()
+    #     except Exception as e:
+    #         self.get_logger().error(f"Failed to home the robot: {e}")
+    #         pass
+    #     finally:
+    #         # Clean up resources if needed
+    #         self.get_logger().info("Shutting down the control loop")
+    #         joint_zero_velocities = [0.0] * len(self.joint_names)
+    #         # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
+    #         self.command_joint_velocities(joint_zero_velocities)
+    #     # now run the control loop
+    #     # self.control_loop()
 
     #########################################################################################################
     ############################# SUBSCRIBERS AND PUBLISHERS INITIALIZATION #################################
@@ -415,7 +431,7 @@ class ArmController(Node):
         This function commands the robot to the home position using joint velocities.
         """
         # do the following in a loop for 5 seconds:
-        t_start = self.get_clock().now()
+        t_start = self.get_clock().now().nanoseconds
         duration = 0.0
         while rclpy.ok():
             if duration >= 5.0:
@@ -424,7 +440,7 @@ class ArmController(Node):
         # self.get_logger().info(f"DEBUGGING: {self.joint_states}")
             if self.joint_states is not None:
                 # self.get_logger().info("IN THE IF STATMENT")
-                # duration = (self.get_clock().now() - t_start).seconds
+                duration = (self.get_clock().now().nanoseconds - t_start) / 1e9
                 q = []
                 dq = []
                 for joint_name in self.joint_names:
