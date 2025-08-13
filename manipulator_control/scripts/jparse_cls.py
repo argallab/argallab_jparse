@@ -26,20 +26,6 @@ class JParseClass(Node):
 
         self.base_link = base_link
         self.end_link = end_link
-        # from IPython import embed; embed()
-        # Load URDF from parameter server
-        # urdf = Robot.from_parameter_server()
-        # model = pin.buildModelFromUrdf(urdf.to_xml_string())
-        # self.data = model.createData()
-        # self.model = model
-        # self.num_joints = 7
-
-        # publishers
-        # self.marker_pub = self.create_publisher(MarkerArray, '/jparse_ellipsoid_marker', 10)
-
-        # subscribers
-        # self.joint_state_sub = self.create_subscription(
-        #     JointState, '/joint_states', self.joint_state_callback, 10)
 
         self.J_prev = None
         self.J_prev_time = None

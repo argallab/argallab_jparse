@@ -81,7 +81,7 @@ class ArmController(Node):
         self.show_jparse_ellipses = self.declare_parameter('~show_jparse_ellipses', False).get_parameter_value().bool_value #boolean to control if the JParse ellipses are shown or not
 
         self.joint_states = None
-        self.target_pose = None
+        # self.target_pose = None
         self.teleop_control_command = None
         self.jacobian_calculator = jparse_cls.JParseClass(base_link=self.base_link, end_link=self.end_link)
 
@@ -114,7 +114,7 @@ class ArmController(Node):
 
         ## NEW for pinocchio (8/8/2025) ##
         # hard-coded for now
-        urdf_filename = "/workspace/xarm7.urdf"
+        # urdf_filename = "/workspace/xarm7.urdf"
         # urdf_filename = "xarm7.urdf.xacro" ## note to self: need to change this from xacro to just urdf usign the command "xacro xarm7.urdf.xacro > xarm7.urdf" -- however, the robot needs to be launched but this is not working currently when I tested it
         # urdf_path = model_path + "/" + urdf_filename
 
@@ -128,13 +128,14 @@ class ArmController(Node):
         # pin.buildModelsFromUrdf()
         # Create model and data
         # from IPython import embed; embed(banner1="looking at pin stuff")
-        self.model = pin.buildModelFromUrdf(urdf_filename) #pin.Model()
-        self.data = self.model.createData()
+        # self.model, _, _ = pin.buildModelsFromUrdf(urdf_filename) #pin.Model()
+        # self.model = pin.buildModelFromUrdf(urdf_filename) #pin.Model()
+        # self.data = self.model.createData()
 
         # another way:
         # from robot data
         
-        # self.rate = self.create_rate(10)  # 10 Hz
+        self.rate = self.create_rate(10)  # 10 Hz
         # #home the robot
         # try:
         #     self.velocity_home_robot()
@@ -149,27 +150,32 @@ class ArmController(Node):
         #     self.command_joint_velocities(joint_zero_velocities)
         #now run the control loop
         # self.control_loop()
+        self.counter = 0
+        self.timer = self.create_timer(0.01, self.timer_callback)
 
-    #     self.timer = self.create_timer(10, self.timer_callback)
 
-
-    # def timer_callback(self):
+    def timer_callback(self):
     #     # if self.joint_states is not None:
     #     # self.velocity_home_robot()
     #     #home the robot
-    #     try:
-    #         self.velocity_home_robot()
-    #     except Exception as e:
-    #         self.get_logger().error(f"Failed to home the robot: {e}")
-    #         pass
-    #     finally:
-    #         # Clean up resources if needed
-    #         self.get_logger().info("Shutting down the control loop")
-    #         joint_zero_velocities = [0.0] * len(self.joint_names)
-    #         # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
-    #         self.command_joint_velocities(joint_zero_velocities)
-    #     # now run the control loop
-    #     # self.control_loop()
+        # try:
+        # self.counter += 1
+        # self.get_logger().info(f'Timer triggered! Count: {self.counter}')
+        # self.velocity_home_robot()
+        # joint_zero_velocities = [0.0] * len(self.joint_names)
+        # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
+        # self.command_joint_velocities(joint_zero_velocities)
+        self.control_loop()
+        # except Exception as e:
+        #     self.get_logger().error(f"Failed to home the robot: {e}")
+        #     pass
+        # finally:
+        #     # Clean up resources if needed
+        #     self.get_logger().info("Shutting down the control loop")
+        #     joint_zero_velocities = [0.0] * len(self.joint_names)
+        #     self.command_joint_velocities(joint_zero_velocities)
+        # now run the control loop
+        # self.control_loop()
 
     #########################################################################################################
     ############################# SUBSCRIBERS AND PUBLISHERS INITIALIZATION #################################
@@ -187,14 +193,13 @@ class ArmController(Node):
         # js_qos = QoSProfile(depth=10, durability=DurabilityPolicy.VOLATILE)
         js_cb_g = ReentrantCallbackGroup()
         self.joint_state_sub = self.create_subscription(
-            JointState, joint_states_topic, self.joint_states_callback, 10)
-            # , callback_group=js_cb_g)
-        self.target_pose_sub = self.create_subscription(
-            PoseStamped, '/target_pose', self.target_pose_callback, 1)
+            JointState, joint_states_topic, self.joint_states_callback, 10, callback_group=js_cb_g)
+        # self.target_pose_sub = self.create_subscription(
+        #     PoseStamped, '/target_pose', self.target_pose_callback, 1, callback_group=js_cb_g)
         self.teleop_control_sub = self.create_subscription(
-            TwistStamped, 'robot_action', self.teleop_control_callback, 1)
+            TwistStamped, 'robot_action', self.teleop_control_callback, 1, callback_group=js_cb_g)
         self.gripper_action_sub = self.create_subscription(
-            Float32, '/gripper_action', self.gripper_position_callback, 1)
+            Float32, '/gripper_action', self.gripper_position_callback, 1, callback_group=js_cb_g)
         
     def initialize_publishers(self):
         # publishers
@@ -237,7 +242,7 @@ class ArmController(Node):
         """
         # self.get_logger().info(f"HELLLLLOOOO joint states callback {msg}")
         self.joint_states = msg
-        self.velocity_home_robot()
+        # self.velocity_home_robot()
 
     def teleop_control_callback(self, msg):
         """
@@ -255,17 +260,18 @@ class ArmController(Node):
             position_velocity = position_velocity / position_velocity_norm * 0.05
         self.teleop_control_command = np.array([position_velocity[0], position_velocity[1],position_velocity[2],angular_velocity[0],angular_velocity[1],angular_velocity[2]])        #check if norm of the space mouse command is greater than 0.05, if so normalize it to this value
 
-        #ensure we can get into the while loop
-        if self.use_teleop_control == True:
-            self.target_pose = PoseStamped() #set this tfrom scipy.spatial.transform import Rotation as R o get in a loop
+        # #ensure we can get into the while loop
+        # if self.use_teleop_control == True:
+        #     self.get_logger().info("in the teleop control callback")
+        #     self.target_pose = PoseStamped() #set this to get in a loop
 
-    def target_pose_callback(self, msg):
-        """
-        Callback function for the target_pose topic. This function will be called whenever a new message is received
-        on the target_pose topic. The message is a geometry_msgs/PoseStamped message, which contains the target pose
-        """
-        self.target_pose = msg
-        self.current_target_pose_pub.publish(self.target_pose) #if target pose is paused manually, this allows us to track the current target pose seen by the script
+    # def target_pose_callback(self, msg):
+    #     """
+    #     Callback function for the target_pose topic. This function will be called whenever a new message is received
+    #     on the target_pose topic. The message is a geometry_msgs/PoseStamped message, which contains the target pose
+    #     """
+    #     self.target_pose = msg
+    #     self.current_target_pose_pub.publish(self.target_pose) #if target pose is paused manually, this allows us to track the current target pose seen by the script
     
     ##########################################################################################################
     ####################################### HELPER FUNCTIONS #################################################
@@ -302,7 +308,7 @@ class ArmController(Node):
     #     This function computes the end-effector velocity given the joint configuration q and joint velocities dq.
     #     """
     #     J = self.jacobian_calculator.jacobian(q)
-    #     J = np.array(J)
+    #     J = np.array(J)duration
     #     dq = np.array(dq)
     #     dx = np.dot(J, dq)
     #     return dx
@@ -348,7 +354,9 @@ class ArmController(Node):
     def pose_error(self, current_pose, target_pose, error_norm_max = 0.05, control_pose_error = True):
         """
         This function computes the error between the current pose and the target pose.
+        NOT NEEDED
         """
+        self.get_logger().info(f'TARGET POSE: {target_pose}')
         #Compute the position error
         position_error = np.array([target_pose.pose.position.x - current_pose.pose.position.x,
                                    target_pose.pose.position.y - current_pose.pose.position.y,
@@ -432,32 +440,35 @@ class ArmController(Node):
         """
         # do the following in a loop for 5 seconds:
         t_start = self.get_clock().now().nanoseconds
-        duration = 0.0
-        while rclpy.ok():
-            if duration >= 5.0:
-                break
-            # self.get_logger().info("Homing the robot")
-        # self.get_logger().info(f"DEBUGGING: {self.joint_states}")
-            if self.joint_states is not None:
-                # self.get_logger().info("IN THE IF STATMENT")
-                duration = (self.get_clock().now().nanoseconds - t_start) / 1e9
-                q = []
-                dq = []
-                for joint_name in self.joint_names:
-                    idx = self.joint_states.name.index(joint_name)
-                    q.append(self.joint_states.position[idx])
-                    dq.append(self.joint_states.velocity[idx])
-                self.current_positions = q
-                # Command the joint velocities
-                if self.is_sim == True:
-                    kp_gain = 10.0
-                else:
-                    kp_gain = 0.5
-                q_home = [-0.03142359480261803, -0.5166178941726685, 0.12042707949876785, 0.9197863936424255, -0.03142168000340462, 1.4172008037567139, 0.03490765020251274]
-                #now find the error between the current position and the home position and use joint velocities to move towards the home position
-                joint_velocities_list = kp_gain * (np.array(q_home) - np.array(q))
-                self.get_logger().info(f"joints for homing {joint_velocities_list}")
-                self.command_joint_velocities(joint_velocities_list)
+        # duration = 0.0
+        # while rclpy.ok():
+        # while self.counter <= 10:
+        #     if self.counter == 10:
+                # joint_zero_velocities = [0.0] * len(self.joint_names)
+                # self.command_joint_velocities(joint_zero_velocities)
+                # break
+            #     # self.get_logger().info("Homing the robot")
+            # # self.get_logger().info(f"DEBUGGING: {self.joint_states}")
+        if self.joint_states is not None:
+            # self.get_logger().info("IN THE IF STATMENT")
+            # duration = (self.get_clock().now().nanoseconds - t_start) / 1e9
+            q = []
+            dq = []
+            for joint_name in self.joint_names:
+                idx = self.joint_states.name.index(joint_name)
+                q.append(self.joint_states.position[idx])
+                dq.append(self.joint_states.velocity[idx])
+            self.current_positions = q
+            # Command the joint velocities
+            if self.is_sim == True:
+                kp_gain = 10.0
+            else:
+                kp_gain = 0.5
+            q_home = [-0.03142359480261803, -0.5166178941726685, 0.12042707949876785, 0.9197863936424255, -0.03142168000340462, 1.4172008037567139, 0.03490765020251274]
+            #now find the error between the current position and the home position and use joint velocities to move towards the home position
+            joint_velocities_list = kp_gain * (np.array(q_home) - np.array(q))
+            self.get_logger().info(f"joints for homing {joint_velocities_list}")
+            self.command_joint_velocities(joint_velocities_list)
 
     
     ##############################################################################################################
@@ -556,131 +567,124 @@ class ArmController(Node):
         TODO: Need to compute the jacobian and then pass that to JParse and dont need all the comparisons!! (8/8/25)
         """
 
-        while rclpy.ok():
+        # while rclpy.ok():
 
-            if self.joint_states is not None and self.teleop_control_command is not None:  # edited this 7/11/25
-                t = self.get_clock().now()
-                # obtain the current joints
-                q = []
-                dq = []
-                effort = []
-                for joint_name in self.joint_names:
-                    idx = self.joint_states.name.index(joint_name)
-                    q.append(self.joint_states.position[idx])
-                    dq.append(self.joint_states.velocity[idx])
-                    effort.append(self.joint_states.effort[idx])  
-                self.current_positions = q
-                # Calculate the JParsed Jacobian
-                # from IPython import embed; embed(banner1="hellloooooo")
-                # NEW # 8/8/2025
-                # 1) Forward kinematics
-                pin.forwardKinematics(self.model, self.data, q)
-                pin.updateFramePlacements(self.model, self.data)
+        if self.joint_states is not None and self.teleop_control_command is not None:  # edited this 7/11/25
+            t = self.get_clock().now()
+            # obtain the current joints
+            q = []
+            dq = []
+            effort = []
+            for joint_name in self.joint_names:
+                idx = self.joint_states.name.index(joint_name)
+                q.append(self.joint_states.position[idx])
+                dq.append(self.joint_states.velocity[idx])
+                effort.append(self.joint_states.effort[idx])  
+            self.current_positions = q
+            # Calculate the JParsed Jacobian
+            # from IPython import embed; embed(banner1="hellloooooo")
+            # NEW # 8/8/2025
+            urdf_filename = "/workspace/xarm7.urdf"
+            model = pin.buildModelFromUrdf(urdf_filename) # the model structure of the robot
+            data = model.createData() # the data structure of the robot 
+            # 1) Forward kinematics
+            # from IPython import embed; embed(banner1="computing jacobians")
+            np_q = np.array(q)
+            if isinstance(np_q, np.ndarray):
+                print("The object is a NumPy array.")
+                self.get_logger().info(f'q: {np_q} {np_q}')
+            else:
+                print("The object is not a NumPy array.")
+            
+            pin.forwardKinematics(model, data, np_q)  # needs to take in a numpy array
+            pin.updateFramePlacements(model, data)
 
-                # 2) Compute joint Jacobians
-                pin.computeJointJacobians(self.model, self.data, q)
-                
-                method = self.method #set by parameter, can be set from launch file
-                self.get_logger().info(f"Method being used: {method}")
-                if method == "JacobianPseudoInverse":
-                    #this is the traditional pseudo-inverse method for the jacobian
-                    # J_method, J_nullspace = self.jacobian_calculator.JacobianPseudoInverse(q=q, position_only=self.position_only, jac_nullspace_bool=True)
-                    raise NotImplementedError
-                elif method == "JParse":
-                    # The JParse method takes in the joint angles, gamma, position_only, and singular_direction_gain
-                    if self.show_jparse_ellipses == True:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position, singular_direction_gain_angular=self.phi_gain_angular,  jac_nullspace_bool=True, publish_jparse_ellipses=True, end_effector_pose=self.EndEffectorPose(q), verbose=False)                        
-                    else:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position,singular_direction_gain_angular=self.phi_gain_angular, jac_nullspace_bool=True)
-                elif method == "JacobianDampedLeastSquares":
-                    # J_method, J_nullspace = self.jacobian_calculator.jacobian_damped_least_squares(q=q, damping=0.1, jac_nullspace_bool=True) #dampening of 0.1 works very well, 0.8 shows clear error
-                    raise NotImplementedError
-                elif method == "JacobianProjection":
-                    # J_proj, J_nullspace = self.jacobian_calculator.jacobian_projection(q=q, gamma=0.1, jac_nullspace_bool=True)
-                    # J_method = np.linalg.pinv(J_proj)
-                    raise NotImplementedError
-                elif method == "JacobianSafety":
-                    # The JParse method takes in the joint angles, gamma, position_only, and singular_direction_gain
-                    if self.show_jparse_ellipses == True:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position, singular_direction_gain_angular=self.phi_gain_angular,  jac_nullspace_bool=True, publish_jparse_ellipses=True, end_effector_pose=self.EndEffectorPose(q), verbose=False, safety_only=True)                        
-                    else:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position,singular_direction_gain_angular=self.phi_gain_angular, jac_nullspace_bool=True, safety_only=True)
-                elif method == "JacobianSafetyProjection":
-                    # The JParse method takes in the joint angles, gamma, position_only, and singular_direction_gain
-                    if self.show_jparse_ellipses == True:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position, singular_direction_gain_angular=self.phi_gain_angular,  jac_nullspace_bool=True, publish_jparse_ellipses=True, end_effector_pose=self.EndEffectorPose(q), verbose=False, safety_projection_only=True)                        
-                    else:
-                        J_method, J_nullspace = self.jacobian_calculator.JParse(q=q, gamma=self.jparse_gamma, position_only=self.position_only, singular_direction_gain_position=self.phi_gain_position,singular_direction_gain_angular=self.phi_gain_angular, jac_nullspace_bool=True, safety_projection_only=True)
+            # 2) Compute joint Jacobians
+            pin.computeJointJacobians(model, data, np_q)
 
-                #Calculate the delta_x (task space error)
-                target_pose = self.target_pose
-                current_pose = self.EndEffectorPose(q)
-                position_error, angular_error = self.pose_error(current_pose, target_pose, control_pose_error=False)
-                # log the pose error
-                self.publish_pose_errors(position_error, angular_error, control_pose_error=False)
-                #now find error for control (max error norm)
-                if self.is_sim == False:
-                    #real world limits
-                    error_norm_max = 0.10
-                else:
-                    #simulation limits
-                    error_norm_max = 1.0
-                position_error, angular_error = self.pose_error(current_pose, target_pose, error_norm_max = error_norm_max, control_pose_error=True)                
-                #move in nullspace towards nominal pose (for xarm its 0 joint angle for Xarm7)
+            # 3) Extract Jacobian
+            J6 = data.J #J3 = data.J[:3, :] -- will give us only position so removing it
+            print(f'JACOBIAN: {J6}')
+            
+            method = self.method #set by parameter, can be set from launch file
+            self.get_logger().info(f"Method being used: {method}")
+            if method == "JacobianPseudoInverse":
+                raise NotImplementedError
+            elif method == "JParse":
+                J_method, J_nullspace = self.jacobian_calculator.JParse(J=J6, jac_nullspace_bool=True, gamma=0.1, singular_direction_gain_position=1, singular_direction_gain_orientation=2, position_dimensions=3, angular_dimensions=3)
+            elif method == "JacobianDampedLeastSquares":
+                raise NotImplementedError
+            elif method == "JacobianProjection":
+                raise NotImplementedError
+            elif method == "JacobianSafety":
+                raise NotImplementedError
+            elif method == "JacobianSafetyProjection":
+                raise NotImplementedError
+            
+            #Calculate the delta_x (task space error)
+            current_pose = self.EndEffectorPose(q)
+            if self.is_sim == False:
+                #real world limits
+                error_norm_max = 0.10
+            else:
+                #simulation limits
+                error_norm_max = 1.0         
+            #move in nullspace towards nominal pose (for xarm its 0 joint angle for Xarm7)
+            if self.is_sim == True:
+                kp_gain = 2.0
+            else:
+                # kp_gain = 1.0
+                kp_gain = 3.0
+
+            if self.is_sim == True:
+                nominal_motion_nullspace = np.matrix([-v*kp_gain for v in q]).T #send to home which is 0 joint position for all joints
+            else:
+                # nominal motion nullspace which checks if q magnitude is below threshold and chooses the minimum
+                null_space_angle_rate = 0.6
+
+                nominal_motion_nullspace = np.matrix([np.sign(-v*kp_gain)*np.min([np.abs(-v*kp_gain),null_space_angle_rate]) for v in q]).T #send to home which is 0 joint position for all joints
+
+            # Calculate and command the joint velocities
+            if self.position_only == True:
+                self.get_logger().info("Position only control")
+                # position_error = np.matrix(position_error).T
+                raise NotImplementedError
                 if self.is_sim == True:
-                    kp_gain = 2.0
+                    #use these gains only in simulation!
+                    kp_gain = 10.0
                 else:
-                    # kp_gain = 1.0
                     kp_gain = 3.0
+                Kp = np.diag([kp_gain, kp_gain, kp_gain])  # Proportional gain matrix
 
+                task_vector = Kp @ position_error 
+                joint_velocities = J_method @ task_vector + J_nullspace @ nominal_motion_nullspace
+            else:
+                # realworld gains (tested)
+                kp_gain_position = 1.0
+                kp_gain_orientation = 1.0
                 if self.is_sim == True:
-                    nominal_motion_nullspace = np.matrix([-v*kp_gain for v in q]).T #send to home which is 0 joint position for all joints
-                else:
-                    # nominal motion nullspace which checks if q magnitude is below threshold and chooses the minimum
-                    null_space_angle_rate = 0.6
-
-                    nominal_motion_nullspace = np.matrix([np.sign(-v*kp_gain)*np.min([np.abs(-v*kp_gain),null_space_angle_rate]) for v in q]).T #send to home which is 0 joint position for all joints
-                # log the pose error
-                self.publish_pose_errors(position_error, angular_error, control_pose_error=True)
-
-                # Calculate and command the joint velocities
-                if self.position_only == True:
-                    self.get_logger().info("Position only control")
-                    position_error = np.matrix(position_error).T
-                    if self.is_sim == True:
-                        #use these gains only in simulation!
-                        kp_gain = 10.0
-                    else:
-                        kp_gain = 3.0
-                    Kp = np.diag([kp_gain, kp_gain, kp_gain])  # Proportional gain matrix
-
-                    task_vector = Kp @ position_error 
-                    joint_velocities = J_method @ task_vector + J_nullspace @ nominal_motion_nullspace
-                else:
-                    # realworld gains (tested)
-                    kp_gain_position = 1.0
-                    kp_gain_orientation = 1.0
-                    if self.is_sim == True:
-                        #use these gains only in simulation!
-                        kp_gain_position = 10.0
-                        kp_gain_orientation = 10.0
-                    Kp_position = np.diag([kp_gain_position, kp_gain_position, kp_gain_position])  # Proportional gain matrix
-                    Kp_orientation = np.diag([kp_gain_orientation, kp_gain_orientation, kp_gain_orientation])
-                    task_position = Kp_position @ np.matrix(position_error).T
-                    task_orientation = Kp_orientation @ np.matrix(angular_error).T
-                    full_pose_error = np.matrix(np.concatenate((task_position.T, task_orientation.T),axis=1)).T
-                    if self.use_teleop_control == False:
-                        joint_velocities = J_method @ full_pose_error + J_nullspace @ nominal_motion_nullspace
-                    if self.use_teleop_control == True:
-                        #use the teleop control command to control the joint velocities
-                        teleop_control_command = np.matrix(self.teleop_control_command).T
-                        #now add this to the joint velocities
-                        joint_velocities = J_method @ teleop_control_command + J_nullspace @ nominal_motion_nullspace
-                        #check this
-                joint_velocities_list = np.array(joint_velocities).flatten().tolist()
-                # command the joint velocities
-                self.command_joint_velocities(joint_velocities_list) #this commands the joint velocities
-            self.rate.sleep()
+                    #use these gains only in simulation!
+                    kp_gain_position = 10.0
+                    kp_gain_orientation = 10.0
+                Kp_position = np.diag([kp_gain_position, kp_gain_position, kp_gain_position])  # Proportional gain matrix
+                Kp_orientation = np.diag([kp_gain_orientation, kp_gain_orientation, kp_gain_orientation])
+                if self.use_teleop_control == False:
+                    # joint_velocities = J_method @ full_pose_error + J_nullspace @ nominal_motion_nullspace
+                    raise NotImplementedError
+                if self.use_teleop_control == True:
+                    #use the teleop control command to control the joint velocities
+                    teleop_control_command = np.matrix(self.teleop_control_command).T
+                    #now add this to the joint velocities
+                    # print(f"J_method: {J_method} {np.array(J_method).shape}")
+                    # print(f'teleop command: {teleop_control_command} {np.array(teleop_control_command).shape}')
+                    # print(f'J_nullspace: {J_nullspace} {np.array(J_nullspace).shape}')
+                    # print(f'nominal_motion_nullspace: {nominal_motion_nullspace} {np.array(nominal_motion_nullspace).shape}')
+                    joint_velocities = J_method @ teleop_control_command + J_nullspace @ nominal_motion_nullspace
+                    #check this
+            joint_velocities_list = np.array(joint_velocities).flatten().tolist()
+            # command the joint velocities
+            self.command_joint_velocities(joint_velocities_list) #this commands the joint velocities
+            # self.rate.sleep()
             self.get_logger().info("Control loop running")
 
 # if __name__ == '__main__':
