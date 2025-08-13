@@ -2,3 +2,6 @@
 # 	path = xarm_base
 # 	url = https://github.com/argallab/xarm_base.git
 # 	branch = dev/jparse_ros2
+[submodule "ros2_teleop_twist_keyboard"]
+	path = ros2_teleop_twist_keyboard
+	url = https://github.com/argallab/ros2_teleop_twist_keyboard.git
