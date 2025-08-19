@@ -552,10 +552,10 @@ class ArmController(Node):
             # this is on the real robot, directly send joint velociteies
             # Send joint velocities to the arm
             # log the velocities
-            
             if self.use_teleop_control_jparse:
-                self.get_logger().info(f"Joint velocities: {joint_vel_list}")
+                # self.get_logger().info(f"Joint velocities: {joint_vel_list}")
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
+                self.arm.set_gripper_position(self.gripper_pose)
 
     ###############################################################################################################
     ######################################### CONTROL LOOP ########################################################

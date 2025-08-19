@@ -5,3 +5,6 @@
 [submodule "ros2_teleop_twist_keyboard"]
 	path = ros2_teleop_twist_keyboard
 	url = https://github.com/argallab/ros2_teleop_twist_keyboard.git
+[submodule "xarm_ros2_base"]
+	path = xarm_ros2_base
+	url = https://github.com/argallab/xarm_ros2_base.git
