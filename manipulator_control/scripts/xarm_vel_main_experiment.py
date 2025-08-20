@@ -30,9 +30,7 @@ except ImportError:
 
 import jparse_cls
 
-# Huge TODO: might need to implement the control loop as a timer callback instead of a while loop to avoid blocking the node (7/21/25)
-# Update as of 8/1125 -- need to make sure that velocity_home can be called somewhere not in the callback and then also need to edit the control loop with the new
-# arguments to Jparse from jparse_cls.py; then need to figure out also where to call it to run
+
 class ArmController(Node):
     def __init__(self):
         super().__init__('arm_controller')
@@ -111,71 +109,15 @@ class ArmController(Node):
 
         # Initialize the current positions
         self.current_positions = [0.0] * len(self.joint_names)
-
-        ## NEW for pinocchio (8/8/2025) ##
-        # hard-coded for now
-        # urdf_filename = "/workspace/xarm7.urdf"
-        # urdf_filename = "xarm7.urdf.xacro" ## note to self: need to change this from xacro to just urdf usign the command "xacro xarm7.urdf.xacro > xarm7.urdf" -- however, the robot needs to be launched but this is not working currently when I tested it
-        # urdf_path = model_path + "/" + urdf_filename
-
-
-        # to test as wellquaternion_matrix
-        # urdf_string = self.get_parameter('robot_description').value
-        # robot = pin.RobotWrapper.BuildFromURDF(urdf_string)  # need to figure out what this does differently from the one below
-        # self.model = robot.model
-        # self.data = robot.data
-
-        # pin.buildModelsFromUrdf()
-        # Create model and data
-        # from IPython import embed; embed(banner1="looking at pin stuff")
-        # self.model, _, _ = pin.buildModelsFromUrdf(urdf_filename) #pin.Model()
-        # self.model = pin.buildModelFromUrdf(urdf_filename) #pin.Model()
-        # self.data = self.model.createData()
-
-        # another way:
-        # from robot data
         
         self.rate = self.create_rate(10)  # 10 Hz
-        # #home the robot
-        # try:
-        #     self.velocity_home_robot()
-        # except Exception as e:
-        #     self.get_logger().error(f"Failed to home the robot: {e}")
-        #     pass
-        # finally:
-        #     # Clean up resources if needed
-        #     self.get_logger().info("Shutting down the control loop")
-        #     joint_zero_velocities = [0.0] * len(self.joint_names)
-        #     # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
-        #     self.command_joint_velocities(joint_zero_velocities)
-        #now run the control loop
-        # self.control_loop()
-        self.counter = 0
+
         self.timer = self.create_timer(0.01, self.timer_callback)
 
 
     def timer_callback(self):
-    #     # if self.joint_states is not None:
-    #     # self.velocity_home_robot()
-    #     #home the robot
-        # try:
-        # self.counter += 1
-        # self.get_logger().info(f'Timer triggered! Count: {self.counter}')
-        # self.velocity_home_robot()
-        # joint_zero_velocities = [0.0] * len(self.joint_names)
-        # self.timer = self.create_timer(10, self.command_joint_velocities(joint_zero_velocities))
-        # self.command_joint_velocities(joint_zero_velocities)
         self.control_loop()
-        # except Exception as e:
-        #     self.get_logger().error(f"Failed to home the robot: {e}")
-        #     pass
-        # finally:
-        #     # Clean up resources if needed
-        #     self.get_logger().info("Shutting down the control loop")
-        #     joint_zero_velocities = [0.0] * len(self.joint_names)
-        #     self.command_joint_velocities(joint_zero_velocities)
-        # now run the control loop
-        # self.control_loop()
+
 
     #########################################################################################################
     ############################# SUBSCRIBERS AND PUBLISHERS INITIALIZATION #################################
@@ -188,14 +130,11 @@ class ArmController(Node):
         else:
             joint_states_topic = '/joint_states'
 
-        self.get_logger().info(f"joint states topic name {joint_states_topic}")
         # subscribers
         # js_qos = QoSProfile(depth=10, durability=DurabilityPolicy.VOLATILE)
         js_cb_g = ReentrantCallbackGroup()
         self.joint_state_sub = self.create_subscription(
             JointState, joint_states_topic, self.joint_states_callback, 10, callback_group=js_cb_g)
-        # self.target_pose_sub = self.create_subscription(
-        #     PoseStamped, '/target_pose', self.target_pose_callback, 1, callback_group=js_cb_g)
         self.teleop_control_sub = self.create_subscription(
             TwistStamped, 'robot_action', self.teleop_control_callback, 1, callback_group=js_cb_g)
         self.gripper_action_sub = self.create_subscription(
@@ -226,7 +165,6 @@ class ArmController(Node):
     ##########################################################################################################
     def gripper_position_callback(self, msg):
         """Callback for the gripper. It includes the gripper position value. Float32 value."""
-        # self.get_logger().info(msg)
         joystick_gripper_pose = msg.data
         # convert the joystick value to gripper poses [-1, 1] is to [0, 900], where 0 is close and 900 is open
         delta = joystick_gripper_pose * (self.gripper_speed / self.gripper_update_rate)
@@ -240,9 +178,7 @@ class ArmController(Node):
         and the corresponding joint velocities and efforts. This function will extract the joint positions, velocities, 
         and efforts and return them as lists.
         """
-        # self.get_logger().info(f"HELLLLLOOOO joint states callback {msg}")
         self.joint_states = msg
-        # self.velocity_home_robot()
 
     def teleop_control_callback(self, msg):
         """
@@ -260,19 +196,6 @@ class ArmController(Node):
             position_velocity = position_velocity / position_velocity_norm * 0.05
         self.teleop_control_command = np.array([position_velocity[0], position_velocity[1],position_velocity[2],angular_velocity[0],angular_velocity[1],angular_velocity[2]])        #check if norm of the space mouse command is greater than 0.05, if so normalize it to this value
 
-        # #ensure we can get into the while loop
-        # if self.use_teleop_control == True:
-        #     self.get_logger().info("in the teleop control callback")
-        #     self.target_pose = PoseStamped() #set this to get in a loop
-
-    # def target_pose_callback(self, msg):
-    #     """
-    #     Callback function for the target_pose topic. This function will be called whenever a new message is received
-    #     on the target_pose topic. The message is a geometry_msgs/PoseStamped message, which contains the target pose
-    #     """
-    #     self.target_pose = msg
-    #     self.current_target_pose_pub.publish(self.target_pose) #if target pose is paused manually, this allows us to track the current target pose seen by the script
-    
     ##########################################################################################################
     ####################################### HELPER FUNCTIONS #################################################
     ##########################################################################################################
@@ -301,17 +224,6 @@ class ArmController(Node):
             self.get_logger().error(f"end link {self.end_link}")
         self.current_end_effector_pose_pub.publish(current_pose)
         return current_pose
-    
-    # not needed for the xarm control so commenting out
-    # def EndEffectorVelocity(self, q, dq):
-    #     """
-    #     This function computes the end-effector velocity given the joint configuration q and joint velocities dq.
-    #     """
-    #     J = self.jacobian_calculator.jacobian(q)
-    #     J = np.array(J)duration
-    #     dq = np.array(dq)
-    #     dx = np.dot(J, dq)
-    #     return dx
     
     def rotation_matrix_to_axis_angle(self,R):
         """
@@ -366,10 +278,6 @@ class ArmController(Node):
             if np.linalg.norm(position_error) > error_norm_max:
                 position_error = position_error / np.linalg.norm(position_error) * error_norm_max
 
-        #convert the quaternion in posestamped to list of quaternions then pass this into quaternion_matrix to get the rotation matrix. Access only the rotation part of the matrix
-        # goal_rotation_matrix = quaternion_matrix([target_pose.pose.orientation.x, target_pose.pose.orientation.y, target_pose.pose.orientation.z, target_pose.pose.orientation.w])[:3,:3]
-        # current_rotation_matrix = quaternion_matrix([current_pose.pose.orientation.x, current_pose.pose.orientation.y, current_pose.pose.orientation.z, current_pose.pose.orientation.w])[:3,:3]
-        
         # for ros 2
         goal_quat_scripy = np.array([target_pose.pose.orientation.w, target_pose.pose.orientation.x, target_pose.pose.orientation.y, target_pose.pose.orientation.z])
         current_rotation_quat_scipy = np.array([current_pose.pose.orientation.w, current_pose.pose.orientation.x, current_pose.pose.orientation.y, current_pose.pose.orientation.z])
@@ -439,19 +347,7 @@ class ArmController(Node):
         This function commands the robot to the home position using joint velocities.
         """
         # do the following in a loop for 5 seconds:
-        t_start = self.get_clock().now().nanoseconds
-        # duration = 0.0
-        # while rclpy.ok():
-        # while self.counter <= 10:
-        #     if self.counter == 10:
-                # joint_zero_velocities = [0.0] * len(self.joint_names)
-                # self.command_joint_velocities(joint_zero_velocities)
-                # break
-            #     # self.get_logger().info("Homing the robot")
-            # # self.get_logger().info(f"DEBUGGING: {self.joint_states}")
         if self.joint_states is not None:
-            # self.get_logger().info("IN THE IF STATMENT")
-            # duration = (self.get_clock().now().nanoseconds - t_start) / 1e9
             q = []
             dq = []
             for joint_name in self.joint_names:
@@ -554,8 +450,8 @@ class ArmController(Node):
             # log the velocities
             if self.use_teleop_control_jparse:
                 # self.get_logger().info(f"Joint velocities: {joint_vel_list}")
-                self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
-                self.arm.set_gripper_position(self.gripper_pose)
+                self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True) # arm command
+                self.arm.set_gripper_position(self.gripper_pose) # gripper command
 
     ###############################################################################################################
     ######################################### CONTROL LOOP ########################################################
@@ -582,7 +478,6 @@ class ArmController(Node):
                 effort.append(self.joint_states.effort[idx])  
             self.current_positions = q
             # Calculate the JParsed Jacobian
-            # from IPython import embed; embed(banner1="hellloooooo")
             # NEW # 8/8/2025
             urdf_filename = "/workspace/xarm7.urdf"
             model = pin.buildModelFromUrdf(urdf_filename) # the model structure of the robot
@@ -649,15 +544,6 @@ class ArmController(Node):
                 self.get_logger().info("Position only control")
                 # position_error = np.matrix(position_error).T
                 raise NotImplementedError
-                if self.is_sim == True:
-                    #use these gains only in simulation!
-                    kp_gain = 10.0
-                else:
-                    kp_gain = 3.0
-                Kp = np.diag([kp_gain, kp_gain, kp_gain])  # Proportional gain matrix
-
-                task_vector = Kp @ position_error 
-                joint_velocities = J_method @ task_vector + J_nullspace @ nominal_motion_nullspace
             else:
                 # realworld gains (tested)
                 kp_gain_position = 1.0
@@ -675,24 +561,11 @@ class ArmController(Node):
                     #use the teleop control command to control the joint velocities
                     teleop_control_command = np.matrix(self.teleop_control_command).T
                     #now add this to the joint velocities
-                    # print(f"J_method: {J_method} {np.array(J_method).shape}")
-                    # print(f'teleop command: {teleop_control_command} {np.array(teleop_control_command).shape}')
-                    # print(f'J_nullspace: {J_nullspace} {np.array(J_nullspace).shape}')
-                    # print(f'nominal_motion_nullspace: {nominal_motion_nullspace} {np.array(nominal_motion_nullspace).shape}')
                     joint_velocities = J_method @ teleop_control_command + J_nullspace @ nominal_motion_nullspace
-                    #check this
             joint_velocities_list = np.array(joint_velocities).flatten().tolist()
             # command the joint velocities
             self.command_joint_velocities(joint_velocities_list) #this commands the joint velocities
-            # self.rate.sleep()
             self.get_logger().info("Control loop running")
-
-# if __name__ == '__main__':
-#     try:
-#         ArmController()
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-#         pass
 
 def main(args=None):
     rclpy.init(args=args)

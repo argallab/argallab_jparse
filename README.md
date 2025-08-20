@@ -19,19 +19,38 @@ _In Submission_
 
 ## ROS 2 DEV!!!
 The `main` branch is supporting *ROS Noetic*.
-The `ros2_dev` branch is developing the support for *ROS 2 Jazzy* (coming soon).
+The `ros2_dev` branch is supporting *ROS 2 Jazzy*.
 
 ## FOR ARGALLAB (ROS 2)
-Instructions to teleop robot with jparse and keyboard:
-TODO: NEEDS TO BE TESTED and jparse_cls.py needs to be written!
 
-Launch the following:
+### Joystick or SNP Teleop
+```
+ros2 launch xarm_moveit_config xarm7_moveit_realmove.launch.py robot_ip:=<add the robot ip> add_gripper:=true
+
+ros2 launch manipulator_control xarm_main_vel.launch use_teleop_control:=true use_teleop_control_jparse:=true
+
+ros2 launch xarm_teleop xarm_teleop.launch.xml JOY:=true paradigm:=3
+```
+
+```
+ros2 launch xarm_moveit_config xarm7_moveit_realmove.launch.py robot_ip:=<add the robot ip> add_gripper:=true
+
+ros2 launch manipulator_control xarm_main_vel.launch use_teleop_control:=true use_teleop_control_jparse:=true
+
+ros2 launch xarm_teleop xarm_teleop.launch.xml SNP:=true
+```
+
+### Keyboard Teleop
+Instructions to teleop robot with jparse and keyboard:
+
+Launch the following for keyboard teleop:
 ```
 ros2 launch xarm_moveit_config xarm7_moveit_realmove.launch.py robot_ip:=<add the robot ip> add_gripper:=true
 
 ros2 launch manipulator_control xarm_main_vel.launch use_teleop_control:=true use_teleop_control_jparse:=true
 
 ros2 run teleop_twist_keyboard teleop_twist_keyboard stamped:=True frame_id:=link_eef --ros-args --remap cmd_vel:=robot_action
+
 ```
 
 Edits need to be still commpleted to test the robot after writing script for joystick and sip/puff teleop.
@@ -40,11 +59,10 @@ Edits need to be still commpleted to test the robot after writing script for joy
 - [x] Need to implement gripper in the `xarm_vel_experimenter.py` -- this is a function call to the api!!! the topic is `/gripper_action`
 - [ ] self-avoidance collision -- waiting for ros 2 port
 - [ ] work-around for the joint limits so that the robot does *not* immediately need to be power cycled -- waiting for ros 2 port
-- [ ] port to ros2 (need pinnochio) -- WORKING ON!!
+- [x] port to ros2 (need pinnochio)
 
 
 ### Instructions for Argallab
-We will need to build the docker image ourself (but I guess sincewe now have it done once, need to remind myself to upload to argallab docker hub).
 Below are the instructions for building the image ourself and the docker container:
 ```sh
 cd <naviagte to your git clone of this>/Docker
