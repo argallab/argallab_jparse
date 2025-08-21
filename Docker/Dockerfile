@@ -5,6 +5,9 @@ ENV ROS_DISTRO jazzy
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-ros2-control \
     ros-${ROS_DISTRO}-ros2-controllers \
+    ros-${ROS_DISTRO}-joy \
+    ros-${ROS_DISTRO}-colcon-clean \
+    ros-${ROS_DISTRO}-common-plugins \
     ros-${ROS_DISTRO}-kinematics-interface-kdl \
     ros-${ROS_DISTRO}-ament-cmake-clang-format \
     ros-${ROS_DISTRO}-rviz2 \
@@ -59,6 +62,7 @@ RUN apt-get update -yq && apt-get install -yq \
     g++ \
     unzip \
     git \
+    transform3d \
     python3-scipy \
     python3-numpy \ 
     python3-cvxopt \
@@ -68,12 +72,13 @@ RUN apt-get update -yq && apt-get install -yq \
 	python3-tk \
 	python3-pytest-rerunfailures \
 	python3-matplotlib \
+    python3-box2d \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # RUN git clone https://github.com/xArm-Developer/xArm-Python-SDK.git && cd xArm-Python-SDK && python3 setup.py install
 
-# # install pinocchio
-# RUN pip3 install pin
+# install box 2d
+RUN pip3 install Box2D --break-system-packages
 
 # setup environment
 ENV LANG C.UTF-8
