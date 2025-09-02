@@ -68,6 +68,7 @@ RUN apt-get update -yq && apt-get install -yq \
     python3-cvxopt \
     python3-pandas \ 
     python3-colcon-common-extensions \
+    python3-colcon-clean \
     python-is-python3 \
 	python3-tk \
 	python3-pytest-rerunfailures \
