@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# Adapted for ROS 2 and gripper control by Demiana Barsoum, Argallab from code written by Dr. Monroe Kennedy's group, Stanford in ROS 1
 import sys
 import rclpy
 from rclpy.node import Node
@@ -479,7 +481,7 @@ class ArmController(Node):
             self.current_positions = q
             # Calculate the JParsed Jacobian
             # NEW # 8/8/2025
-            urdf_filename = "/workspace/xarm7.urdf"
+            urdf_filename = "/workspace/xarm7.urdf" # docker workspace
             model = pin.buildModelFromUrdf(urdf_filename) # the model structure of the robot
             data = model.createData() # the data structure of the robot 
             # 1) Forward kinematics

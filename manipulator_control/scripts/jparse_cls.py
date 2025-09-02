@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+# Adapted by Demiana Barsoum, Argallab from code written by Dr. Monroe Kennedy's group, Stanford
+
 import rclpy
 from rclpy.node import Node
 
@@ -152,40 +155,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
-
-
-"""
-        # parameters
-        self.declare_parameter('base_link', 'base_link',
-                               description='Base link of the robot')
-        self.declare_parameter('end_link', 'end_effector_link',
-                               description='End effector link of the robot')
-        
-        # Get parameters
-        self.base_link = self.get_parameter('base_link').get_parameter_value().string_value
-        self.end_effector_link = self.get_parameter('end_link').get_parameter_value().string_value
-
-        # Load URDF from parameter server
-        urdf = URDF.from_parameter_server(self)
-        model = pin.buildModelFromUrdf(urdf.to_xml_string())
-        self.data = model.createData()
-        self.model = model
-
-        # publishers
-        self.marker_pub = self.create_publisher(MarkerArray, '/jparse_ellipsoid_marker', 10)
-
-        # subscribers
-        self.joint_state_sub = self.create_subscription(
-            JointState, '/joint_states', self.joint_state_callback, 10)
-
-        self.J_prev = None
-        self.J_prev_time = None
-
-        # Timer: publish every 0.1s
-        self.create_timer(0.1, self.timer_callback)
-
-    def timer_callback(self):
-        pass
-"""
-        
