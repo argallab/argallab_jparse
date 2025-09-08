@@ -21,7 +21,8 @@ from sensor_msgs.msg import JointState
 import tf
 from tf import TransformerROS
 import tf2_ros
-from tf.transformations import quaternion_from_euler, quaternion_matrix
+from tf.transformations import quaternion_from_euler, quaternion_matrix, euler_from_quaternion
+import modern_robotics as mr
 
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState
@@ -84,6 +85,9 @@ class ArmController:
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         self.tfros = tf.TransformerROS()
         self.tf_timeout = rospy.Duration(1.0)
+
+        self.adaptive_frame = 'link_eef2'
+        self.EEfAdaptive()
 
         # gripper initialization
         self.gripper_pose = 900 # means the gripper is open
@@ -202,6 +206,15 @@ class ArmController:
         """
         self.target_pose = msg
         self.current_target_pose_pub.publish(self.target_pose) #if target pose is paused manually, this allows us to track the current target pose seen by the script
+
+    def EEfAdaptive(self):
+        try:
+            self.trans_adaptive = self.tfBuffer.lookup_transform(self.base_link, self.adaptive_frame, rospy.Time(), timeout=self.tf_timeout) # target first and then source
+            rospy.logerr("found transform from %s to %s", self.base_link, self.adaptive_frame)
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            rospy.logerr("TF lookup failed")
+            rospy.logerr("failed to lookup transform from %s to %s", self.base_link, self.adaptive_frame)
+        
 
     def EndEffectorPose(self, q):
         """
@@ -502,7 +515,23 @@ class ArmController:
                         joint_velocities = J_method @ full_pose_error + J_nullspace @ nominal_motion_nullspace
                     if self.use_space_mouse == True:
                         #use the space mouse command to control the joint velocities
-                        space_mouse_command = np.matrix(self.space_mouse_command).T
+                        # self.space_mouse_command is in the adaptive frame and want to be relative to base
+                        # from IPython import embed; embed(banner1="in here to check the rotations stuff")
+                        # command_b_eef2 = np.dot(self.trans_adaptive.transform.rotation, self.space_mouse_command)
+                        # command_b_eef2 = tf2_geometry_msgs.do_transform_twist(self.space_mouse_command, self.trans_adaptive)
+                        
+                        rot_mat_adaptive = tf.transformations.quaternion_matrix([self.trans_adaptive.transform.rotation.x,
+                                                         self.trans_adaptive.transform.rotation.y,
+                                                         self.trans_adaptive.transform.rotation.z,
+                                                         self.trans_adaptive.transform.rotation.w])
+
+                        adj_adaptive = mr.Adjoint(rot_mat_adaptive)
+
+                        v_adaptive = adj_adaptive @ self.space_mouse_command
+
+                        # space_mouse_command = np.matrix(self.space_mouse_command).T
+                        space_mouse_command = np.matrix(v_adaptive).T
+                        
                         #now add this to the joint velocities
                         joint_velocities = J_method @ space_mouse_command + J_nullspace @ nominal_motion_nullspace
                         #check this
@@ -511,6 +540,8 @@ class ArmController:
                 self.command_joint_velocities(joint_velocities_list) #this commands the joint velocities
             self.rate.sleep()
             rospy.loginfo("Control loop running")
+
+
 
 
     def velocity_home_robot(self):
