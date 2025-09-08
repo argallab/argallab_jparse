@@ -157,6 +157,8 @@ class ArmController:
         joint_command_topic = rospy.get_param('~joint_command_topic', '/xarm/xarm7_velo_traj_controller/command')
         self.joint_vel_pub = rospy.Publisher(joint_command_topic, JointTrajectory, queue_size=10)
 
+        self.joint_vel_debug = rospy.Publisher('/joint_vel_debug', Float64MultiArray, queue_size=10)
+
     def rad2deg(self, q):
         return q/math.pi*180.0
     
@@ -210,10 +212,10 @@ class ArmController:
     def EEfAdaptive(self):
         try:
             self.trans_adaptive = self.tfBuffer.lookup_transform(self.base_link, self.adaptive_frame, rospy.Time(), timeout=self.tf_timeout) # target first and then source
-            rospy.logerr("found transform from %s to %s", self.base_link, self.adaptive_frame)
+            # rospy.loginfo("found transform from %s to %s", self.base_link, self.adaptive_frame)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("TF lookup failed")
-            rospy.logerr("failed to lookup transform from %s to %s", self.base_link, self.adaptive_frame)
+            rospy.logfatal("TF lookup failed")
+            rospy.logfatal("failed to lookup transform from %s to %s", self.base_link, self.adaptive_frame)
         
 
     def EndEffectorPose(self, q):
@@ -519,21 +521,27 @@ class ArmController:
                         # from IPython import embed; embed(banner1="in here to check the rotations stuff")
                         # command_b_eef2 = np.dot(self.trans_adaptive.transform.rotation, self.space_mouse_command)
                         # command_b_eef2 = tf2_geometry_msgs.do_transform_twist(self.space_mouse_command, self.trans_adaptive)
-                        
+                        self.EEfAdaptive()
                         rot_mat_adaptive = tf.transformations.quaternion_matrix([self.trans_adaptive.transform.rotation.x,
                                                          self.trans_adaptive.transform.rotation.y,
                                                          self.trans_adaptive.transform.rotation.z,
                                                          self.trans_adaptive.transform.rotation.w])
 
-                        adj_adaptive = mr.Adjoint(rot_mat_adaptive)
-
-                        v_adaptive = adj_adaptive @ self.space_mouse_command
-
+                        # this transforms all dimensions translation and orientation. 
+                        # for adaptive tool frame, this is only an orientation control method.
+                        # adj_adaptive = mr.Adjoint(rot_mat_adaptive)
+                        # v_adaptive = adj_adaptive @ self.space_mouse_command
                         # space_mouse_command = np.matrix(self.space_mouse_command).T
-                        space_mouse_command = np.matrix(v_adaptive).T
+                        # space_mouse_command = np.matrix(v_adaptive).T
+
+                        _w = np.append(self.space_mouse_command[3:], 1)
+                        w_adaptive = (rot_mat_adaptive @ _w)[:3]
+                        space_mouse_adaptive = np.append(self.space_mouse_command[:3], w_adaptive)
+                        space_mouse_adaptive = np.matrix(space_mouse_adaptive).T
+                        assert space_mouse_adaptive.shape == (6, 1) # needs to be a COLUMN vector
                         
                         #now add this to the joint velocities
-                        joint_velocities = J_method @ space_mouse_command + J_nullspace @ nominal_motion_nullspace
+                        joint_velocities = J_method @ space_mouse_adaptive + J_nullspace @ nominal_motion_nullspace
                         #check this
                 joint_velocities_list = np.array(joint_velocities).flatten().tolist()
                 # command the joint velocities
@@ -615,9 +623,12 @@ class ArmController:
             # this is on the real robot, directly send joint velociteies
             # Send joint velocities to the arm
             # log the velocities
-            # rospy.loginfo("Joint velocities: %s", joint_vel_list)
+            rospy.loginfo("Joint velocities: %s", joint_vel_list)
             if self.use_space_mouse_jparse:
-                rospy.loginfo("IN HERE GOOOOOD!!") 
+                rospy.loginfo("IN HERE GOOOOOD!!")
+                # debug_msg = Float64MultiArray()
+                # debug_msg.data = joint_vel_list
+                # self.joint_vel_debug.publish(debug_msg)
                 self.arm.vc_set_joint_velocity(joint_vel_list, is_radian=True)
                 self.arm.set_gripper_position(self.gripper_pose)
 

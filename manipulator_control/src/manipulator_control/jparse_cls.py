@@ -14,14 +14,14 @@ from geometry_msgs.msg import Quaternion, Pose, Point, PoseStamped
 
 
 class JParseClass(object):
-    def __init__(self, base_link="base_link", end_link="end_effector_link"):
+    def __init__(self, base_link="base_link", end_link="link_eef"):
         # Initialize any necessary variables or parameters here
         """
         Base link: The base link of the robot.
         End link: The end link of the robot.
         """
         self.base_link = base_link
-        self.end_link = end_link  
+        self.end_link = end_link
         self.urdf = Robot.from_parameter_server()
         self.kdl_tree = kdl_tree_from_urdf_model(self.urdf)
         self.chain = self.kdl_tree.getChain(base_link, end_link)

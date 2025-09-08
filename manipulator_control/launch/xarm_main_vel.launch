@@ -28,7 +28,6 @@
         <param name="method" value="$(arg method)" />
         <param name="joint_command_topic" value="$(arg joint_command_topic)" />
         <param name="base_link_name" value="link_base"/>
-        <param name="end_link_name" value="link_eef"/>
         <param name="is_sim" value="$(arg is_sim)" />
         <param name="phi_gain_position" value="$(arg phi_gain_position)" />
         <param name="phi_gain_angular" value="$(arg phi_gain_angular)" />
