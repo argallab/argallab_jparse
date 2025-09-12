@@ -33,6 +33,8 @@ try:
             recording = True
             arm.set_mode(0)
             arm.set_state(state=0)
+            arm.set_gripper_enable(True)
+            # arm.set_gripper
             # print("Recording started. Switched to manual mode.")
             time.sleep(1)  # Debounce delay
         # elif recording:
@@ -69,7 +71,7 @@ try:
             arm.set_state(0)
             time.sleep(1)
             # time.sleep(2)
-            filepath = '/home/jparse_ws/src/replay_test/reconstructed_data/old_demo/demiana_redo/JOY/pegandhole/old_demo_1_20250910-231254.csv'
+            filepath = '/home/jparse_ws/src/replay_test/reconstructed_data/old_demo/demiana_redo/JOY/pickandplace/old_demo_1_20250911-004136.csv'
             df = pd.read_csv(filepath)
             # traj = pd.read_csv(filepath)
             traj = df[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']]
@@ -78,10 +80,17 @@ try:
 
             df_as_list = traj_relative.values.tolist()
             df_as_list.append(traj.iloc[-1] - traj[::20].iloc[-1])
+
+            gripper_pose = df[::20]['gripper']
+            # from IPython import embed; embed()
             print("Playing back trajectory...")
-            for pos in df_as_list:
+            for pos, grip in zip(df_as_list, gripper_pose):
+                if grip != 0.0:
+                    arm.set_gripper_position(grip)
+                # for grip in gripper_pose:
                 print(pos)
                 arm.set_position(*pos, wait=False, relative=True, radius=0)
+                
             print("Trajectory playback complete.")
             time.sleep(0.5)
             replaying = False
