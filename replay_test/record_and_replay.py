@@ -176,24 +176,16 @@ try:
             data_type = 'old'
             task_type = 'pickandplace'
             # filepath is for the ros1 docker container
-            # filepath = f'/home/jparse_ws/src/replay_test/reconstructed_data/{data_type}_demo/demiana_redo/JOY/{task_type}/{data_type}_demo_1_20250911-004136.csv'
-            filepath = '/home/jparse_ws/src/lfd_xarm/data/demiana_redo/JOY/pickandplace/demo_1_20250911-004136.csv'
+            filepath = f'/home/jparse_ws/src/replay_test/reconstructed_data/{data_type}_demo/demiana_redo/JOY/{task_type}/{data_type}_demo_1_20250911-004136.csv'
+            # filepath = '/home/jparse_ws/src/lfd_xarm/data/demiana_redo/JOY/pickandplace/demo_1_20250911-004136.csv'
             df = pd.read_csv(filepath)
             ### DEBUG
-            traj = df[['ee_pose_rad', 'gripper']]
-            traj['ee_pose_rad'] = traj['ee_pose_rad'].apply(safe_literal_eval)
-            traj[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']] = pd.DataFrame(traj['ee_pose_rad'].values.tolist())
-            
-            
-            
+            # traj = df[['ee_pose_rad', 'gripper']]
+            # traj['ee_pose_rad'] = traj['ee_pose_rad'].apply(safe_literal_eval)
+            # traj[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']] = pd.DataFrame(traj['ee_pose_rad'].values.tolist())
 
-            # traj[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']] = traj[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']].diff()
-            # traj = traj.dropna()
-            # traj_relative = traj[::20].diff().dropna()
-
-            # from IPython import embed; embed(banner1="checking roll")
-
-            downsampled_traj = traj[::20] #.values.tolist()
+            traj = df[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz', 'gripper']]
+            downsampled_traj = traj[::20]
             df_as_list = downsampled_traj[['ee_x', 'ee_y', 'ee_z', 'ee_tx', 'ee_ty', 'ee_tz']].values.tolist()
 
             gripper_pose = downsampled_traj[['gripper']].values.tolist()
