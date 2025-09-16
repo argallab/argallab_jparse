@@ -547,7 +547,7 @@ class ArmController:
                 # command the joint velocities
                 self.command_joint_velocities(joint_velocities_list) #this commands the joint velocities
             self.rate.sleep()
-            rospy.loginfo("Control loop running")
+            rospy.loginfo_once("Control loop running")
 
 
 
@@ -624,8 +624,9 @@ class ArmController:
             # Send joint velocities to the arm
             # log the velocities
             rospy.loginfo("Joint velocities: %s", joint_vel_list)
+            # rospy.logfatal(f"GRIPPER VALUE BEFORE: {self.gripper_pose}")
             if self.use_space_mouse_jparse:
-                rospy.loginfo("IN HERE GOOOOOD!!")
+                rospy.loginfo_once("IN HERE GOOOOOD!!")
                 # debug_msg = Float64MultiArray()
                 # debug_msg.data = joint_vel_list
                 # self.joint_vel_debug.publish(debug_msg)
